@@ -137,7 +137,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
+  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -329,7 +329,22 @@ export default function App() {
             onAutoArrange={()=>{
               const owned=goods.filter(g=>g.status==="owned"||g.status==="reserved");
               if(!owned.length){showToast("持ってるグッズを登録してください");return;}
-              if(currentAltar.altarMode==="shelf"){
+              if(currentAltar.altarMode==="hina"){
+                // hinaShelf is 5 rows: widths [6,5,4,3,2] (top to bottom = wide to narrow)
+                const hinaRows=[6,5,4,3,2];
+                const hs=hinaRows.map(w=>Array(w).fill(null));
+                let idx=0;
+                for(let r=0;r<hs.length;r++) for(let c=0;c<hs[r].length;c++) { if(idx<owned.length) hs[r][c]=owned[idx++].id; }
+                updateAltar(currentAltar.id,{hinaShelf:hs});
+              } else if(currentAltar.altarMode==="showcase"){
+                const sc=Array.from({length:3},()=>Array(4).fill(null));
+                owned.slice(0,12).forEach((g,i)=>{sc[Math.floor(i/4)][i%4]=g.id;});
+                updateAltar(currentAltar.id,{showcaseShelf:sc});
+              } else if(currentAltar.altarMode==="flat"){
+                const fl=Array(8).fill(null);
+                owned.slice(0,8).forEach((g,i)=>{fl[i]=g.id;});
+                updateAltar(currentAltar.id,{flatShelf:fl});
+              } else if(currentAltar.altarMode==="shelf"){
                 const ns=Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null));
                 owned.slice(0,SHELF_ROWS*SHELF_COLS).forEach((g,i)=>{ns[Math.floor(i/SHELF_COLS)][i%SHELF_COLS]=g.id;});
                 updateAltar(currentAltar.id,{shelf:ns});
@@ -1083,6 +1098,9 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   const freeItems = altar.freeItems;
   const altarMode = altar.altarMode;
   const onShelf = new Set(shelf.flat().filter(Boolean));
+  const onHina     = new Set((altar.hinaShelf||[]).flat().filter(Boolean));
+  const onShowcase = new Set((altar.showcaseShelf||[]).flat().filter(Boolean));
+  const onFlat     = new Set((altar.flatShelf||[]).filter(Boolean));
   const onFree  = new Set(freeItems.map(i=>i.goodId));
   const isDark  = template.dark!==false;
   const [editingName,setEditingName]=useState(false);
@@ -1100,6 +1118,50 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   const [hoverCell,setHoverCell]=useState(null);
 
   const placeOnShelf=(goodId,r,c)=>onUpdateAltar({shelf:shelf.map((row,ri)=>row.map((cell,ci)=>{ if(cell===goodId) return null; if(ri===r&&ci===c) return goodId; return cell; }))});
+
+  // ── Hina shelf handlers ────────────────────────────────────
+  const hinaShelf = altar.hinaShelf || Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse();
+  const placeOnHina=(goodId,r,c)=>onUpdateAltar({hinaShelf:hinaShelf.map((row,ri)=>row.map((cell,ci)=>{ if(cell===goodId) return null; if(ri===r&&ci===c) return goodId; return cell; }))});
+  const swapHina=(r1,c1,r2,c2)=>onUpdateAltar({hinaShelf:hinaShelf.map((row,ri)=>row.map((cell,ci)=>{ if(ri===r1&&ci===c1) return hinaShelf[r2][c2]; if(ri===r2&&ci===c2) return hinaShelf[r1][c1]; return cell; }))});
+  const removeHina=(r,c)=>onUpdateAltar({hinaShelf:hinaShelf.map((row,ri)=>row.map((cell,ci)=>ri===r&&ci===c?null:cell))});
+  // ── Showcase handlers ────────────────────────────────────
+  const showcaseShelf = altar.showcaseShelf || Array.from({length:3},()=>Array(4).fill(null));
+  const placeOnShowcase=(goodId,r,c)=>onUpdateAltar({showcaseShelf:showcaseShelf.map((row,ri)=>row.map((cell,ci)=>{ if(cell===goodId) return null; if(ri===r&&ci===c) return goodId; return cell; }))});
+  const swapShowcase=(r1,c1,r2,c2)=>onUpdateAltar({showcaseShelf:showcaseShelf.map((row,ri)=>row.map((cell,ci)=>{ if(ri===r1&&ci===c1) return showcaseShelf[r2][c2]; if(ri===r2&&ci===c2) return showcaseShelf[r1][c1]; return cell; }))});
+  const removeShowcase=(r,c)=>onUpdateAltar({showcaseShelf:showcaseShelf.map((row,ri)=>row.map((cell,ci)=>ri===r&&ci===c?null:cell))});
+  const [showcaseDragSrcGood,setShowcaseDragSrcGood]=useState(null);
+  const [showcaseDragSrcCell,setShowcaseDragSrcCell]=useState(null);
+  const [showcaseHoverCell,setShowcaseHoverCell]=useState(null);
+  const handleShowcaseDrop=(r,c)=>{
+    if(showcaseDragSrcGood){placeOnShowcase(showcaseDragSrcGood,r,c);showToast("ショーケースに配置しました ✓");setShowcaseDragSrcGood(null);}
+    else if(showcaseDragSrcCell){const[sr,sc]=showcaseDragSrcCell;if(sr!==r||sc!==c)swapShowcase(sr,sc,r,c);setShowcaseDragSrcCell(null);}
+    setShowcaseHoverCell(null);
+  };
+
+  // ── Flat shelf handlers ────────────────────────────────────
+  const flatShelf = altar.flatShelf || Array(8).fill(null);
+  const placeOnFlat=(goodId,i)=>onUpdateAltar({flatShelf:flatShelf.map((cell,ci)=>{ if(cell===goodId) return null; if(ci===i) return goodId; return cell; })});
+  const removeFlat=(i)=>onUpdateAltar({flatShelf:flatShelf.map((cell,ci)=>ci===i?null:cell)});
+  const [flatDragSrcGood,setFlatDragSrcGood]=useState(null);
+  const [flatDragSrcIdx,setFlatDragSrcIdx]=useState(null);
+  const [flatHoverIdx,setFlatHoverIdx]=useState(null);
+  const handleFlatDrop=(i)=>{
+    if(flatDragSrcGood){placeOnFlat(flatDragSrcGood,i);showToast("フラット台に配置しました ✓");setFlatDragSrcGood(null);}
+    else if(flatDragSrcIdx!==null&&flatDragSrcIdx!==i){
+      const nf=[...flatShelf]; [nf[flatDragSrcIdx],nf[i]]=[nf[i],nf[flatDragSrcIdx]];
+      onUpdateAltar({flatShelf:nf}); setFlatDragSrcIdx(null);
+    }
+    setFlatHoverIdx(null);
+  };
+
+  const [hinaDragSrcGood,setHinaDragSrcGood]=useState(null);
+  const [hinaDragSrcCell,setHinaDragSrcCell]=useState(null);
+  const [hinaHoverCell,setHinaHoverCell]=useState(null);
+  const handleHinaDrop=(r,c)=>{
+    if(hinaDragSrcGood){placeOnHina(hinaDragSrcGood,r,c);showToast("ひな壇に配置しました ✓");setHinaDragSrcGood(null);}
+    else if(hinaDragSrcCell){const[sr,sc]=hinaDragSrcCell;if(sr!==r||sc!==c)swapHina(sr,sc,r,c);setHinaDragSrcCell(null);}
+    setHinaHoverCell(null);
+  };
   const swapShelf=(r1,c1,r2,c2)=>onUpdateAltar({shelf:shelf.map((row,ri)=>row.map((cell,ci)=>{ if(ri===r1&&ci===c1) return shelf[r2][c2]; if(ri===r2&&ci===c2) return shelf[r1][c1]; return cell; }))});
   const removeShelf=(r,c)=>onUpdateAltar({shelf:shelf.map((row,ri)=>row.map((cell,ci)=>ri===r&&ci===c?null:cell))});
 
@@ -1217,7 +1279,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* Controls */}
       <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
-        {[["shelf","🗄 棚"],["free","✦ 自由配置"]].map(([m,l])=>(
+        {[["shelf","🗄 棚"],["hina","🎎 ひな壇"],["showcase","🪟 ショーケース"],["flat","🟫 フラット台"],["free","✦ 自由配置"]].map(([m,l])=>(
           <button key={m} onClick={()=>!viewingShared&&onUpdateAltar({altarMode:m})} style={{ ...S.modeBtn,...(altarMode===m?S.modeBtnOn:{}) }}>{l}</button>
         ))}
         {!viewingShared&&<button onClick={onOpenTemplates} style={{ ...S.modeBtn,border:`1px solid ${template.border}`,color:template.accent }}>{template.emoji} テンプレ</button>}
@@ -1275,6 +1337,76 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         </div>
       )}
 
+      {/* ── Hina mode ── */}
+      {altarMode==="hina"&&(
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative",minHeight:360 }}>
+          {template.star&&<StarField/>}
+          <AnimatedBG materialId={altar.bgMaterialId}/>
+          <LightOverlay materialId={altar.lightId}/>
+          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
+            draggingDeco={draggingDeco} selectedDeco={selectedDeco}
+            onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
+            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+          <AltarTopBar template={template} altarName={altar.name}/>
+          {/* Hina pyramid */}
+          <HinaStage
+            hinaShelf={hinaShelf} template={template} goodById={goodById}
+            isDark={isDark} viewingShared={viewingShared}
+            hinaDragSrcGood={hinaDragSrcGood} hinaDragSrcCell={hinaDragSrcCell} hinaHoverCell={hinaHoverCell}
+            setHinaDragSrcGood={setHinaDragSrcGood} setHinaDragSrcCell={setHinaDragSrcCell}
+            setHinaHoverCell={setHinaHoverCell} onDrop={handleHinaDrop} onRemove={removeHina}
+            shelfStyleId={altar.shelfStyleId||"default"}
+          />
+        </div>
+      )}
+
+      {/* ── Showcase mode ── */}
+      {altarMode==="showcase"&&(
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
+          {template.star&&<StarField/>}
+          <AnimatedBG materialId={altar.bgMaterialId}/>
+          <LightOverlay materialId={altar.lightId}/>
+          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
+            draggingDeco={draggingDeco} selectedDeco={selectedDeco}
+            onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
+            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+          <AltarTopBar template={template} altarName={altar.name}/>
+          <ShowcaseStage
+            showcaseShelf={showcaseShelf} template={template} goodById={goodById}
+            isDark={isDark} viewingShared={viewingShared}
+            dragSrcGood={showcaseDragSrcGood} dragSrcCell={showcaseDragSrcCell} hoverCell={showcaseHoverCell}
+            setDragSrcCell={setShowcaseDragSrcCell} setHoverCell={setShowcaseHoverCell}
+            onDrop={handleShowcaseDrop} onRemove={removeShowcase}
+            shelfStyleId={altar.shelfStyleId||"default"}
+          />
+        </div>
+      )}
+
+      {/* ── Flat mode ── */}
+      {altarMode==="flat"&&(
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
+          {template.star&&<StarField/>}
+          <AnimatedBG materialId={altar.bgMaterialId}/>
+          <LightOverlay materialId={altar.lightId}/>
+          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
+            draggingDeco={draggingDeco} selectedDeco={selectedDeco}
+            onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
+            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+          <AltarTopBar template={template} altarName={altar.name}/>
+          <FlatStage
+            flatShelf={flatShelf} template={template} goodById={goodById}
+            isDark={isDark} viewingShared={viewingShared}
+            dragSrcGood={flatDragSrcGood} dragSrcIdx={flatDragSrcIdx} hoverIdx={flatHoverIdx}
+            setDragSrcIdx={setFlatDragSrcIdx} setHoverIdx={setFlatHoverIdx}
+            onDrop={handleFlatDrop} onRemove={removeFlat}
+            shelfStyleId={altar.shelfStyleId||"default"}
+          />
+        </div>
+      )}
+
       {/* Layer panel */}
       {altarMode==="free"&&showLayerPanel&&!viewingShared&&(
         <LayerPanel freeItems={freeItems} goodById={goodById} onReorder={reorderLayer} onScaleDepth={scaleLayer}/>
@@ -1318,7 +1450,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <div style={S.trayTitle}>📦 持ってる・予約済みグッズ <span style={{ fontSize:11,opacity:0.4,marginLeft:6 }}>{altarMode==="shelf"?"ドラッグして棚へ":"クリックで配置"}</span></div>
           {ownedGoods.length===0?<div style={{ padding:"18px",textAlign:"center",opacity:0.4,fontSize:13 }}>「持ってる」か「予約済み」のグッズを登録すると表示されます</div>:(
             <div style={S.tray}>
-              {ownedGoods.map(g=>{ const placed=altarMode==="shelf"?onShelf.has(g.id):onFree.has(g.id); return (
+              {ownedGoods.map(g=>{ const placed=altarMode==="shelf"?onShelf.has(g.id):altarMode==="hina"?onHina.has(g.id):altarMode==="showcase"?onShowcase.has(g.id):altarMode==="flat"?onFlat.has(g.id):onFree.has(g.id); return (
                 <div key={g.id} draggable={altarMode==="shelf"&&!placed} onDragStart={()=>altarMode==="shelf"&&!placed&&setDragSrcGood(g.id)} onDragEnd={()=>setDragSrcGood(null)} onClick={()=>altarMode==="free"&&!placed&&addFreeItem(g.id)}
                   style={{ ...S.trayItem,opacity:placed?0.3:1,cursor:placed?"default":altarMode==="free"?"pointer":"grab",outline:dragSrcGood===g.id?"2px solid #e879f9":"none" }} title={placed?"配置済み":g.name}>
                   {g.image?<img src={g.image} alt={g.name} style={S.trayItemImg}/>:<div style={S.trayItemEmoji}>{g.emoji||"📦"}</div>}
@@ -2205,6 +2337,204 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
 
         {error&&<div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600 }}>{error}</div>}
         <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer" }}>追加する</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hina Stage ──────────────────────────────────────────────
+// Pyramid/tiered cake stand layout — rows get narrower toward the top
+function HinaStage({ hinaShelf, template, goodById, isDark, viewingShared, hinaDragSrcGood, hinaDragSrcCell, hinaHoverCell, setHinaDragSrcGood, setHinaDragSrcCell, setHinaHoverCell, onDrop, onRemove, shelfStyleId }) {
+  const ss = SHELF_STYLES.find(s=>s.id===shelfStyleId)||SHELF_STYLES[0];
+  // hinaShelf rows: index 0 = widest (bottom), last = narrowest (top)
+  // We render top-to-bottom visually so reverse for display
+  const rows = [...hinaShelf].reverse(); // top row (narrowest) first visually
+
+  // Each row is a tier of the cake stand
+  // Width shrinks as we go up: bottom row takes full width, top row is narrow
+  const totalRows = rows.length;
+
+  return (
+    <div style={{ padding:"10px 16px 16px",display:"flex",flexDirection:"column",gap:0,alignItems:"center" }}>
+      {rows.map((row,displayIdx)=>{
+        // displayIdx 0 = top (narrow), last = bottom (wide)
+        const dataIdx = totalRows - 1 - displayIdx; // index in hinaShelf data
+        const widthPct = 30 + (displayIdx / (totalRows-1)) * 66; // top=30%, bottom=96%
+        const tierH = 70 + (displayIdx * 4); // items get slightly bigger lower down
+        const isHov = (r,c) => hinaHoverCell?.[0]===dataIdx && hinaHoverCell?.[1]===c;
+        const isDragSrc = (c) => hinaDragSrcCell?.[0]===dataIdx && hinaDragSrcCell?.[1]===c;
+
+        return (
+          <div key={dataIdx} style={{ width:`${widthPct}%`,position:"relative",marginBottom:0 }}>
+            {/* Items row */}
+            <div style={{ display:"flex",justifyContent:"center",gap:4,paddingBottom:10,minHeight:tierH }}>
+              {row.map((cellId,cIdx)=>{
+                const good = cellId ? goodById(cellId) : null;
+                const hov  = isHov(dataIdx,cIdx);
+                const dsrc = isDragSrc(cIdx);
+                return (
+                  <div key={cIdx}
+                    style={{ flex:1,maxWidth:80,minHeight:tierH-10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",borderRadius:8,background:hov?`${template.accent}28`:"transparent",outline:hov?`2px dashed ${template.accent}`:dsrc?"2px dashed rgba(255,255,255,0.2)":"none",opacity:dsrc?0.4:1,position:"relative",transition:"all 0.15s",padding:"0 2px" }}
+                    onDragOver={e=>{e.preventDefault();setHinaHoverCell([dataIdx,cIdx]);}}
+                    onDragLeave={()=>setHinaHoverCell(null)}
+                    onDrop={()=>!viewingShared&&onDrop(dataIdx,cIdx)}
+                  >
+                    {good ? (
+                      <div style={{ width:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",flex:1,cursor:"grab",position:"relative" }}
+                        draggable={!viewingShared}
+                        onDragStart={()=>setHinaDragSrcCell([dataIdx,cIdx])}
+                        onDragEnd={()=>setHinaDragSrcCell(null)}>
+                        {good.image
+                          ? <img src={good.image} alt={good.name} style={{ width:"80%",flex:1,objectFit:"contain",minHeight:0 }}/>
+                          : <div style={{ fontSize:28+displayIdx*2,flex:1,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}>{good.emoji||"📦"}</div>
+                        }
+                        <div style={{ fontSize:8,color:isDark?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2 }}>{good.name}</div>
+                        {!viewingShared&&<button style={{ ...S_removeCellBtn }} onClick={()=>onRemove(dataIdx,cIdx)}>×</button>}
+                      </div>
+                    ) : (
+                      !viewingShared&&<div style={{ fontSize:14,color:`${template.accent}44`,pointerEvents:"none",marginBottom:8 }}>{hov?"ここへ":"+"}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Tier plank */}
+            <div style={{ height:ss.height||8,background:ss.plank,border:ss.plankBorder,boxShadow:ss.shadow,borderRadius:ss.radius,position:"relative",overflow:"hidden" }}>
+              {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)" }}/>}
+            </div>
+            {/* Tier stand / pillar */}
+            {displayIdx < totalRows-1 && (
+              <div style={{ width:`${Math.max(20,widthPct*0.25)}%`,margin:"0 auto",height:14,background:ss.plank,boxShadow:ss.shadow,borderRadius:"0 0 6px 6px",opacity:0.8 }}/>
+            )}
+          </div>
+        );
+      })}
+      {/* Base platform */}
+      <div style={{ width:"105%",height:12,background:ss.plank,border:ss.plankBorder,boxShadow:ss.shadow,borderRadius:"0 0 8px 8px",marginTop:2 }}>
+        {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)" }}/>}
+      </div>
+    </div>
+  );
+}
+
+// Shared style for remove button (used in HinaStage)
+const S_removeCellBtn = { position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",border:"none",background:"#ef4444",color:"#fff",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,padding:0 };
+
+// ─── Showcase Stage ──────────────────────────────────────────
+// Vertical BOX display case: 3 rows × 4 cols with glass case styling
+function ShowcaseStage({ showcaseShelf, template, goodById, isDark, viewingShared, dragSrcGood, dragSrcCell, hoverCell, setDragSrcCell, setHoverCell, onDrop, onRemove, shelfStyleId }) {
+  const ss = SHELF_STYLES.find(s=>s.id===shelfStyleId)||SHELF_STYLES[0];
+  return (
+    <div style={{ padding:"10px 14px 14px",display:"flex",gap:8 }}>
+      {/* Main case body */}
+      <div style={{ flex:1,border:`2px solid ${template.border}`,borderRadius:12,overflow:"hidden",background:`${template.accent}06`,backdropFilter:"blur(2px)",boxShadow:`inset 0 0 30px ${template.accent}08, 0 4px 20px rgba(0,0,0,0.3)` }}>
+        {/* Glass reflection */}
+        <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.06),transparent)",pointerEvents:"none",borderRadius:"10px 10px 0 0" }}/>
+        {showcaseShelf.map((row,rIdx)=>(
+          <div key={rIdx} style={{ display:"flex",borderBottom:rIdx<showcaseShelf.length-1?`1px solid ${template.border}`:undefined }}>
+            {row.map((cellId,cIdx)=>{
+              const good = cellId ? goodById(cellId) : null;
+              const isHov = hoverCell?.[0]===rIdx && hoverCell?.[1]===cIdx;
+              const isDragSrc = dragSrcCell?.[0]===rIdx && dragSrcCell?.[1]===cIdx;
+              return (
+                <div key={cIdx}
+                  style={{ flex:1,aspectRatio:"0.65",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"4px",borderRight:cIdx<row.length-1?`1px solid ${template.border}`:undefined,background:isHov?`${template.accent}20`:"transparent",outline:isDragSrc?"2px dashed rgba(255,255,255,0.2)":"none",opacity:isDragSrc?0.4:1,position:"relative",transition:"background 0.15s" }}
+                  onDragOver={e=>{e.preventDefault();setHoverCell([rIdx,cIdx]);}}
+                  onDragLeave={()=>setHoverCell(null)}
+                  onDrop={()=>!viewingShared&&onDrop(rIdx,cIdx)}
+                >
+                  {good ? (
+                    <div style={{ width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",cursor:"grab",position:"relative" }}
+                      draggable={!viewingShared}
+                      onDragStart={()=>setDragSrcCell([rIdx,cIdx])}
+                      onDragEnd={()=>setDragSrcCell(null)}>
+                      {good.image
+                        ? <img src={good.image} alt={good.name} style={{ width:"85%",flex:1,objectFit:"contain",minHeight:0,filter:"drop-shadow(0 4px 8px rgba(0,0,0,0.4))" }}/>
+                        : <div style={{ fontSize:34,flex:1,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,filter:"drop-shadow(0 4px 6px rgba(0,0,0,0.4))" }}>{good.emoji||"📦"}</div>
+                      }
+                      <div style={{ fontSize:8,color:isDark?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingBottom:2 }}>{good.name}</div>
+                      {!viewingShared&&<button style={S_removeCellBtn} onClick={()=>onRemove(rIdx,cIdx)}>×</button>}
+                    </div>
+                  ) : (
+                    !viewingShared&&<div style={{ fontSize:14,color:`${template.accent}33`,marginBottom:6 }}>{isHov?"ここへ":"+"}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+        {/* Bottom plank */}
+        <div style={{ height:ss.height||8,background:ss.plank,border:ss.plankBorder,boxShadow:ss.shadow,position:"relative",overflow:"hidden" }}>
+          {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)" }}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Flat Stage ───────────────────────────────────────────────
+// Single wide display platform — great for showing off tall items like figures
+function FlatStage({ flatShelf, template, goodById, isDark, viewingShared, dragSrcGood, dragSrcIdx, hoverIdx, setDragSrcIdx, setHoverIdx, onDrop, onRemove, shelfStyleId }) {
+  const ss = SHELF_STYLES.find(s=>s.id===shelfStyleId)||SHELF_STYLES[0];
+  // Items vary in height based on goodType for depth illusion
+  const getItemScale = (i) => {
+    // Center items appear bigger (front), side items smaller (back illusion)
+    const center = (flatShelf.length-1)/2;
+    const dist = Math.abs(i - center);
+    return 1 - dist * 0.04; // subtle scale difference
+  };
+  return (
+    <div style={{ padding:"10px 16px 0" }}>
+      {/* Platform surface */}
+      <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"center",gap:4,marginBottom:0,minHeight:220,padding:"0 8px" }}>
+        {flatShelf.map((cellId,i)=>{
+          const good = cellId ? goodById(cellId) : null;
+          const isHov = hoverIdx===i;
+          const isDragSrc = dragSrcIdx===i;
+          const scale = getItemScale(i);
+          return (
+            <div key={i}
+              style={{ flex:1,maxWidth:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",minHeight:180,transform:`scale(${scale})`,transformOrigin:"bottom center",transition:"transform 0.2s",position:"relative" }}
+              onDragOver={e=>{e.preventDefault();setHoverIdx(i);}}
+              onDragLeave={()=>setHoverIdx(null)}
+              onDrop={()=>!viewingShared&&onDrop(i)}
+            >
+              {/* Individual pedestal/platform under each item */}
+              {good&&(
+                <div style={{ position:"absolute",bottom:-2,left:"10%",right:"10%",height:6,background:ss.plank,borderRadius:"3px 3px 0 0",boxShadow:ss.shadow,zIndex:1 }}>
+                  {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)" }}/>}
+                </div>
+              )}
+              <div style={{ width:"100%",flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",background:isHov?`${template.accent}18`:"transparent",borderRadius:8,outline:isHov?`2px dashed ${template.accent}`:isDragSrc?"2px dashed rgba(255,255,255,0.2)":"none",opacity:isDragSrc?0.3:1,padding:"4px 2px 8px",position:"relative",transition:"all 0.15s" }}>
+                {good ? (
+                  <div style={{ width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",cursor:"grab",position:"relative" }}
+                    draggable={!viewingShared}
+                    onDragStart={()=>setDragSrcIdx(i)}
+                    onDragEnd={()=>setDragSrcIdx(null)}>
+                    {good.image
+                      ? <img src={good.image} alt={good.name} style={{ width:"85%",maxHeight:160,objectFit:"contain",filter:`drop-shadow(0 6px 12px rgba(0,0,0,0.5))` }}/>
+                      : <div style={{ fontSize:44,lineHeight:1,filter:"drop-shadow(0 6px 10px rgba(0,0,0,0.5))" }}>{good.emoji||"📦"}</div>
+                    }
+                    <div style={{ fontSize:8,color:isDark?"rgba(255,255,255,0.5)":"rgba(0,0,0,0.4)",textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:3 }}>{good.name}</div>
+                    {!viewingShared&&<button style={{ ...S_removeCellBtn,top:0,right:0 }} onClick={()=>onRemove(i)}>×</button>}
+                  </div>
+                ) : (
+                  !viewingShared&&<div style={{ fontSize:14,color:`${template.accent}33`,marginBottom:10 }}>{isHov?"ここへ":"+"}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Wide base plank */}
+      <div style={{ height:ss.height+4||12,background:ss.plank,border:ss.plankBorder,boxShadow:`${ss.shadow}, 0 6px 20px rgba(0,0,0,0.3)`,borderRadius:ss.radius,marginBottom:0,position:"relative",overflow:"hidden" }}>
+        {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)" }}/>}
+      </div>
+      {/* Legs */}
+      <div style={{ display:"flex",justifyContent:"space-between",padding:"0 20px" }}>
+        {[0,1,2].map(i=>(
+          <div key={i} style={{ width:14,height:20,background:ss.plank,borderRadius:"0 0 4px 4px",boxShadow:ss.shadow }}/>
+        ))}
       </div>
     </div>
   );
