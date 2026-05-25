@@ -72,6 +72,8 @@ const GOOD_TYPES = [
   { id:"apparel",  label:"アパレル",   emoji:"👕" },
   { id:"figure",   label:"フィギュア", emoji:"🪆" },
   { id:"other",    label:"その他",     emoji:"📦" },
+  { id:"trading_card", label:"トレカ",    emoji:"🃏" },
+  { id:"kuji",      label:"くじ",       emoji:"🎰" },
 ];
 
 const STATUS = {
@@ -89,6 +91,37 @@ const TEMPLATES = [
   { id:"gold",   name:"ゴールド", emoji:"👑", desc:"豪華絢爛",          bg:"linear-gradient(180deg,#1c1000,#2d1d00)", accent:"#f59e0b", gold:"#fcd34d", floor:"rgba(245,158,11,0.1)",   border:"rgba(245,158,11,0.4)",  plank:"linear-gradient(180deg,#78350f,#451a03)", star:false },
 ];
 
+// 棚素材（makeAltar の shelfStyle フィールドで指定）
+const SHELF_STYLES = [
+  { id:"default",    name:"デジタル",   emoji:"💜", free:true,
+    plank:"linear-gradient(180deg,#3d2060,#2a1540)",
+    plankBorder:"none", shadow:"0 4px 12px rgba(0,0,0,0.4)", height:8, radius:"0 0 4px 4px" },
+  { id:"wood_light", name:"明るい木製", emoji:"🪵", free:true,
+    plank:"linear-gradient(180deg,#c8a26a,#a0784a)",
+    plankBorder:"1px solid #8b6340", shadow:"0 4px 8px rgba(0,0,0,0.35)", height:10, radius:"0 0 3px 3px",
+    grain:true },
+  { id:"wood_dark",  name:"ダーク木製", emoji:"🌳", free:true,
+    plank:"linear-gradient(180deg,#5c3a1e,#3d2010)",
+    plankBorder:"1px solid #2d1508", shadow:"0 4px 10px rgba(0,0,0,0.5)", height:10, radius:"0 0 3px 3px",
+    grain:true },
+  { id:"steel",      name:"スチール",   emoji:"🔩", free:true,
+    plank:"linear-gradient(180deg,#7a8693,#4a555f)",
+    plankBorder:"1px solid #3a4550", shadow:"0 3px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15)", height:8, radius:"0 0 2px 2px" },
+  { id:"glass",      name:"ガラス",     emoji:"🪟", free:false,
+    plank:"linear-gradient(180deg,rgba(200,220,255,0.35),rgba(150,180,240,0.2))",
+    plankBorder:"1px solid rgba(200,230,255,0.5)", shadow:"0 4px 16px rgba(100,150,255,0.2)", height:8, radius:"0 0 4px 4px",
+    blur:true },
+  { id:"marble",     name:"大理石",     emoji:"🏛️", free:false,
+    plank:"linear-gradient(135deg,#f0ece4 0%,#d8d0c4 30%,#f0ece4 60%,#c8bfb0 100%)",
+    plankBorder:"1px solid #b0a898", shadow:"0 4px 12px rgba(0,0,0,0.3)", height:12, radius:"0 0 4px 4px" },
+  { id:"iron",       name:"アイアン",   emoji:"⚙️", free:false,
+    plank:"linear-gradient(180deg,#2a2a2a,#1a1a1a)",
+    plankBorder:"2px solid #444", shadow:"0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)", height:10, radius:"0 0 3px 3px" },
+  { id:"gold_shelf", name:"ゴールド棚", emoji:"✨", free:false,
+    plank:"linear-gradient(180deg,#f5c842,#c9962a)",
+    plankBorder:"1px solid #a07820", shadow:"0 4px 16px rgba(200,150,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3)", height:10, radius:"0 0 4px 4px" },
+];
+
 const SHELF_ROWS = 3;
 const SHELF_COLS = 6;
 let uidCounter = Date.now();
@@ -104,7 +137,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), freeItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, decoIds:[], lightId:null };
+  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), freeItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, decoIds:[], lightId:null, layers:[] };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -115,12 +148,14 @@ export default function App() {
   const [activeAltarId, setActiveAltarId] = useState(null);
   const [goods, setGoods]         = useState([]);
   const [characters, setCharacters] = useState([]); // [{id,name,color,emoji}]
+  const [randomSets, setRandomSets]   = useState([]); // ランダムセット管理
   const [page, setPage]           = useState("collection");
   const [showAdd, setShowAdd]     = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+  const [showRandomSets, setShowRandomSets] = useState(false);
   const [showAltarManager, setShowAltarManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [loaded, setLoaded]       = useState(false);
@@ -144,6 +179,7 @@ export default function App() {
           if (d.goods)      setGoods(d.goods);
           if (d.characters) setCharacters(d.characters);
           if (d.purchasedMaterials) setPurchasedMaterials(d.purchasedMaterials);
+          if (d.randomSets) setRandomSets(d.randomSets);
         } else {
           const a = makeAltar(); setAltars([a]); setActiveAltarId(a.id);
         }
@@ -153,19 +189,19 @@ export default function App() {
   },[]);
 
   // ── Auto-save ─────────────────────────────────────────────
-  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials)=>{
+  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets)=>{
     if (!loaded) return;
     setSaveStatus("saving");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async()=>{
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({plan,altars,activeAltarId,goods,characters,purchasedMaterials}));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets}));
         setSaveStatus("saved"); setTimeout(()=>setSaveStatus(null),2000);
       } catch { setSaveStatus("error"); setTimeout(()=>setSaveStatus(null),3000); }
     },700);
   },[loaded]);
 
-  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,loaded]);
+  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,loaded]);
 
   const showToast = (msg)=>{ setToast(msg); setTimeout(()=>setToast(null),2200); };
 
@@ -206,6 +242,23 @@ export default function App() {
   // ── Characters CRUD (PRO) ──────────────────────────────────
   const addCharacter    = (c)=>{ setCharacters(prev=>[...prev,c]); showToast("キャラクターを追加しました ✓"); };
   const deleteCharacter = (id)=>{ setCharacters(prev=>prev.filter(c=>c.id!==id)); setGoods(prev=>prev.map(g=>g.characterId===id?{...g,characterId:null}:g)); };
+
+  // ── RandomSets CRUD ────────────────────────────────────────
+  const addRandomSet    = (s)=>{ setRandomSets(prev=>[s,...prev]); showToast("ランダムセットを追加しました ✓"); };
+  const updateRandomSet = (id,patch)=>setRandomSets(prev=>prev.map(s=>s.id===id?{...s,...patch}:s));
+  const deleteRandomSet = (id)=>{ setRandomSets(prev=>prev.filter(s=>s.id!==id)); showToast("削除しました"); };
+  const addDrawLog      = (setId, variants)=>{ // variants: [{variantId, count}]
+    const now = new Date().toISOString();
+    const logs = variants.map(v=>({ id:newUid(), variantId:v.variantId, count:v.count, drawnAt:now }));
+    setRandomSets(prev=>prev.map(s=>{ if(s.id!==setId) return s;
+      const newLogs = [...(s.drawLogs||[]), ...logs];
+      // update ownedVariants
+      const owned = {...(s.ownedVariants||{})};
+      variants.forEach(v=>{ owned[v.variantId]=(owned[v.variantId]||0)+v.count; });
+      return {...s, drawLogs:newLogs, ownedVariants:owned, totalDraws:(s.totalDraws||0)+variants.reduce((a,v)=>a+v.count,0) };
+    }));
+    showToast("引いた結果を記録しました 🎰");
+  };
 
   const goodById = (id)=>goods.find(g=>g.id===id);
   const getTemplate = (a)=>{ const base=TEMPLATES.find(t=>t.id===(a?.templateId||"shrine"))||TEMPLATES[0]; return a?.customColors?{...base,...a.customColors}:base; };
@@ -249,14 +302,16 @@ export default function App() {
             {isPro?"👑 PRO":"FREE"}
           </button>
           <nav style={{ display:"flex", gap:6 }}>
-            {[["collection","📦"],["altar","⛩"]].map(([p,l])=>(
-              <button key={p} onClick={()=>setPage(p)} style={{ ...S.navBtn, ...(page===p?S.navBtnOn:{}) }}>{l} {p==="collection"?"コレクション":"祭壇"}</button>
+            {[["collection","📦 コレクション"],["random","🎰 ガチャ管理"],["altar","⛩ 祭壇"]].map(([p,l])=>(
+              <button key={p} onClick={()=>setPage(p)} style={{ ...S.navBtn, ...(page===p?S.navBtnOn:{}) }}>{l}</button>
             ))}
           </nav>
         </div>
       </header>
 
-      {page==="collection"
+      {page==="random"
+        ? <RandomSetsPage randomSets={randomSets} isPro={isPro} onAdd={addRandomSet} onUpdate={updateRandomSet} onDelete={deleteRandomSet} onAddDrawLog={addDrawLog} />
+        : page==="collection"
         ? <CollectionPage goods={goods} counts={counts} characters={characters} isPro={isPro}
             onAdd={()=>setShowAdd(true)} onUpdateStatus={updateGoodStatus} onDelete={deleteGood}
             onUpdateChar={updateGoodChar} onAddCharacter={addCharacter} onDeleteCharacter={deleteCharacter}
@@ -303,16 +358,553 @@ export default function App() {
 }
 
 // ─── Collection Page ──────────────────────────────────────────
+// ─── Random Sets Page ─────────────────────────────────────────
+function RandomSetsPage({ randomSets, isPro, onAdd, onUpdate, onDelete, onAddDrawLog }) {
+  const [showAddSet, setShowAddSet]     = useState(false);
+  const [activeSet, setActiveSet]       = useState(null);
+  const [showDrawModal, setShowDrawModal] = useState(null); // setId
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const totalDraws  = randomSets.reduce((a,s)=>a+(s.totalDraws||0),0);
+  const totalSets   = randomSets.length;
+  const completedSets = randomSets.filter(s=>{
+    if (!s.variants?.length) return false;
+    return s.variants.every(v=>(s.ownedVariants?.[v.id]||0)>=1);
+  }).length;
+
+  return (
+    <main style={S.main}>
+      {/* Stats */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
+        {[{label:"セット数",val:totalSets,color:"#e879f9"},{label:"総引き回数",val:totalDraws,color:"#f59e0b"},{label:"コンプリート",val:completedSets,color:"#22c55e"}].map(s=>(
+          <div key={s.label} style={S.statCard}><div style={{ fontSize:22,fontWeight:900,color:s.color }}>{s.val}</div><div style={{ fontSize:10,color:"#7c6a9a",marginTop:2 }}>{s.label}</div></div>
+        ))}
+      </div>
+
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+        <div style={{ fontSize:13,color:"#7c6a9a" }}>トレカ・缶バッジ・くじなどのランダム系グッズを管理</div>
+        <button onClick={()=>setShowAddSet(true)} style={S.addBtn}>＋ セット追加</button>
+      </div>
+
+      {randomSets.length===0 ? (
+        <div style={S.emptyState}>
+          <div style={{ fontSize:52,marginBottom:10 }}>🎰</div>
+          <div style={{ fontSize:15,fontWeight:700,marginBottom:6 }}>まだセットがありません</div>
+          <div style={{ fontSize:12,opacity:0.5 }}>「＋ セット追加」からトレカやくじを登録しよう</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          {randomSets.map(s=>(
+            <RandomSetCard key={s.id} set={s} isPro={isPro}
+              isActive={activeSet===s.id}
+              onToggle={()=>setActiveSet(activeSet===s.id?null:s.id)}
+              onDraw={()=>setShowDrawModal(s.id)}
+              onDelete={()=>setConfirmDelete(s.id)}
+              onUpdate={(patch)=>onUpdate(s.id,patch)}
+            />
+          ))}
+        </div>
+      )}
+
+      {showAddSet && <AddRandomSetModal onClose={()=>setShowAddSet(false)} onAdd={onAdd} />}
+      {showDrawModal && <DrawModal set={randomSets.find(s=>s.id===showDrawModal)} onClose={()=>setShowDrawModal(null)} onRecord={(variants)=>{ onAddDrawLog(showDrawModal,variants); setShowDrawModal(null); }} />}
+      {confirmDelete && (
+        <div style={S.overlay} onClick={()=>setConfirmDelete(null)}>
+          <div style={S.confirmBox} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize:17,fontWeight:800,marginBottom:6 }}>セットを削除しますか？</div>
+            <div style={{ fontSize:12,opacity:0.5,marginBottom:20 }}>引いた履歴もすべて削除されます</div>
+            <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
+              <button onClick={()=>setConfirmDelete(null)} style={S.btnGhost}>キャンセル</button>
+              <button onClick={()=>{onDelete(confirmDelete);setConfirmDelete(null);}} style={S.btnDanger}>削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Random Set Card ──────────────────────────────────────────
+function RandomSetCard({ set, isPro, isActive, onToggle, onDraw, onDelete, onUpdate }) {
+  const variants      = set.variants || [];
+  const owned         = set.ownedVariants || {};
+  const wantedIds     = set.wantedIds || [];    // 欲しい弾のID配列
+  const surplusMap    = set.surplusMap || {};   // {variantId: 交換に出せる枚数}
+  const tradeHistory  = set.tradeHistory || []; // [{id,date,givenId,receivedId,partner,memo}]
+  const total         = variants.length;
+  const gotCount      = variants.filter(v=>(owned[v.id]||0)>=1).length;
+  const pct           = total>0 ? Math.round(gotCount/total*100) : 0;
+  const isComplete    = total>0 && gotCount===total;
+  const logs          = set.drawLogs || [];
+  const recentLogs    = [...logs].reverse().slice(0,20);
+  const [innerTab, setInnerTab] = useState("variants"); // "variants"|"history"|"trade"
+  const [showTradeAdd, setShowTradeAdd] = useState(false);
+
+  const logsByDate = recentLogs.reduce((acc,l)=>{ const d=l.drawnAt?.slice(0,10)||"不明"; if(!acc[d])acc[d]=[]; acc[d].push(l); return acc; },{});
+  const RAND_TYPE_LABELS = { trading_card:"🃏 トレカ", badge_random:"🔵 缶バッジ", kuji:"🎰 くじ", other:"📦 その他" };
+  const RARITY_COLOR = { N:"#9ca3af",R:"#60a5fa",SR:"#a78bfa",SSR:"#f59e0b",SP:"#f472b6",SEC:"#ef4444" };
+
+  const surplusTotal  = Object.values(surplusMap).reduce((a,b)=>a+b,0);
+  const wantedCount   = wantedIds.length;
+
+  // 交換シェアテキスト生成
+  const generateShareText = () => {
+    const surplusLines = Object.entries(surplusMap)
+      .filter(([,n])=>n>0)
+      .map(([id,n])=>{ const v=variants.find(v=>v.id===id); return `　${v?.name||"?"} ×${n}`; }).join("\n");
+    const wantedLines = wantedIds
+      .map(id=>{ const v=variants.find(v=>v.id===id); return `　${v?.name||"?"}`; }).join("\n");
+    const tags = ["#SAIDAN交換", set.series?`#${set.series}交換`:""].filter(Boolean).join(" ");
+    return [
+      `【交換希望】${set.name}`,
+      surplusLines ? `🔵 お渡しできます\n${surplusLines}` : "",
+      wantedLines  ? `💖 欲しい\n${wantedLines}` : "",
+      tags,
+    ].filter(Boolean).join("\n");
+  };
+
+  const copyShareText = () => {
+    navigator.clipboard.writeText(generateShareText())
+      .then(()=>alert("コピーしました！Xに貼り付けて投稿しよう 🎉"));
+  };
+
+  const toggleWanted   = (vid) => onUpdate({ wantedIds: wantedIds.includes(vid)?wantedIds.filter(i=>i!==vid):[...wantedIds,vid] });
+  const setSurplus     = (vid, val) => onUpdate({ surplusMap: {...surplusMap,[vid]:Math.max(0,val)} });
+  const addTrade       = (trade) => onUpdate({ tradeHistory:[...tradeHistory,{id:newUid(),date:new Date().toISOString().slice(0,10),...trade}] });
+  const deleteTrade    = (tid) => onUpdate({ tradeHistory:tradeHistory.filter(t=>t.id!==tid) });
+
+  return (
+    <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,border:`1px solid ${isComplete?"rgba(34,197,94,0.4)":"rgba(255,255,255,0.07)"}`,overflow:"hidden" }}>
+      {/* Header */}
+      <div style={{ padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer" }} onClick={onToggle}>
+        <div style={{ fontSize:32 }}>{set.emoji||"🎰"}</div>
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+            <span style={{ fontSize:14,fontWeight:800,color:"#f0e8ff" }}>{set.name}</span>
+            {isComplete && <span style={{ fontSize:10,background:"rgba(34,197,94,0.2)",color:"#22c55e",borderRadius:10,padding:"1px 8px",fontWeight:700 }}>🎉 コンプリート！</span>}
+            <span style={{ fontSize:10,color:"#7c6a9a",background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"1px 6px" }}>{RAND_TYPE_LABELS[set.randType]||"🎰 ランダム"}</span>
+          </div>
+          {set.series && <div style={{ fontSize:11,color:"#818cf8",marginTop:1 }}>{set.series}</div>}
+          {total>0 && (
+            <div style={{ marginTop:6 }}>
+              <div style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:"#7c6a9a",marginBottom:3 }}>
+                <span>コンプリート {gotCount}/{total}種</span>
+                <span style={{ display:"flex",gap:10 }}>
+                  {surplusTotal>0&&<span style={{ color:"#60a5fa" }}>🔵 余剰 {surplusTotal}枚</span>}
+                  {wantedCount>0&&<span style={{ color:"#f472b6" }}>💖 欲しい {wantedCount}種</span>}
+                  <span>{pct}%</span>
+                </span>
+              </div>
+              <div style={{ height:4,background:"rgba(255,255,255,0.08)",borderRadius:4,overflow:"hidden" }}>
+                <div style={{ height:"100%",width:`${pct}%`,background:isComplete?"#22c55e":"linear-gradient(90deg,#e879f9,#818cf8)",borderRadius:4,transition:"width 0.5s" }}/>
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize:10,color:"#6b7280",marginTop:3 }}>累計 {set.totalDraws||0} 回 · 交換 {tradeHistory.length} 件</div>
+        </div>
+        <div style={{ display:"flex",gap:6,alignItems:"center",flexShrink:0 }}>
+          <button onClick={e=>{e.stopPropagation();onDraw();}} style={{ padding:"6px 12px",borderRadius:20,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer" }}>🎰 記録</button>
+          <button onClick={e=>{e.stopPropagation();onDelete();}} style={{ ...S.iconBtn,color:"#ef4444" }}>🗑</button>
+          <span style={{ color:"#6b7280",fontSize:12 }}>{isActive?"▲":"▼"}</span>
+        </div>
+      </div>
+
+      {/* Expanded */}
+      {isActive && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)",padding:"0 16px 16px" }}>
+          {/* Inner tabs */}
+          <div style={{ display:"flex",gap:6,marginTop:12,marginBottom:14 }}>
+            {[["variants",`🃏 全種 (${total})`],["trade",`🔄 交換管理${surplusTotal>0||wantedCount>0?" ●":""}`],["history",`📋 履歴 (${logs.length})`]].map(([t,l])=>(
+              <button key={t} onClick={()=>setInnerTab(t)} style={{ padding:"5px 12px",borderRadius:20,border:`1px solid ${innerTab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`,background:innerTab===t?"rgba(232,121,249,0.15)":"transparent",color:innerTab===t?"#e879f9":"#9ca3af",fontSize:11,fontWeight:700,cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+
+          {/* ── Variants tab ── */}
+          {innerTab==="variants" && variants.length>0 && (
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:6 }}>
+              {variants.map(v=>{
+                const cnt     = owned[v.id]||0;
+                const got     = cnt>=1;
+                const surplus = surplusMap[v.id]||0;
+                const wanted  = wantedIds.includes(v.id);
+                return (
+                  <div key={v.id} style={{ background:got?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 6px",textAlign:"center",border:`1px solid ${wanted?"rgba(244,114,182,0.5)":got?"rgba(34,197,94,0.25)":"rgba(255,255,255,0.06)"}`,position:"relative" }}>
+                    {cnt>1 && <div style={{ position:"absolute",top:3,right:3,fontSize:9,background:"rgba(96,165,250,0.3)",color:"#60a5fa",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>×{cnt}</div>}
+                    {surplus>0 && <div style={{ position:"absolute",top:3,left:3,fontSize:9,background:"rgba(96,165,250,0.2)",color:"#60a5fa",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>↔{surplus}</div>}
+                    <div style={{ color:wanted?"#f472b6":got?"#22c55e":"#6b7280",fontWeight:got?700:400,fontSize:11,marginBottom:2 }}>
+                      {wanted?"💖 ":got?"✓ ":"　"}{v.name}
+                    </div>
+                    {v.rarity && <div style={{ fontSize:9,color:RARITY_COLOR[v.rarity]||"#6b7280",fontWeight:700 }}>{v.rarity}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Trade tab ── */}
+          {innerTab==="trade" && (
+            <div>
+              {/* Surplus manager */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:"#60a5fa",marginBottom:8 }}>🔵 余剰管理（交換に出せるもの）</div>
+                <div style={{ display:"flex",flexDirection:"column",gap:5 }}>
+                  {variants.filter(v=>(owned[v.id]||0)>=2||(surplusMap[v.id]||0)>0).length===0 && (
+                    <div style={{ fontSize:11,color:"#4b5563",padding:"8px 0" }}>2枚以上引いた弾がここに表示されます</div>
+                  )}
+                  {variants.filter(v=>(owned[v.id]||0)>=2||(surplusMap[v.id]||0)>0).map(v=>{
+                    const cnt     = owned[v.id]||0;
+                    const surplus = surplusMap[v.id]||0;
+                    const maxSurplus = Math.max(0, cnt-1);
+                    return (
+                      <div key={v.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"rgba(96,165,250,0.06)",borderRadius:10,border:"1px solid rgba(96,165,250,0.15)" }}>
+                        <div style={{ flex:1,fontSize:12,color:"#d1d5db" }}>
+                          {v.name}
+                          {v.rarity&&<span style={{ fontSize:10,color:RARITY_COLOR[v.rarity]||"#6b7280",marginLeft:6 }}>{v.rarity}</span>}
+                          <span style={{ fontSize:10,color:"#6b7280",marginLeft:6 }}>所持×{cnt}</span>
+                        </div>
+                        <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                          <span style={{ fontSize:11,color:"#9ca3af" }}>交換に出す:</span>
+                          <button onClick={()=>setSurplus(v.id,surplus-1)} style={{ width:22,height:22,borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.08)",color:"#f0e8ff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700 }}>−</button>
+                          <span style={{ width:20,textAlign:"center",fontSize:13,fontWeight:700,color:surplus>0?"#60a5fa":"#6b7280" }}>{surplus}</span>
+                          <button onClick={()=>setSurplus(v.id,Math.min(surplus+1,maxSurplus))} style={{ width:22,height:22,borderRadius:"50%",border:"none",background:"rgba(96,165,250,0.2)",color:"#60a5fa",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700 }}>＋</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Wanted manager */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:"#f472b6",marginBottom:8 }}>💖 欲しいリスト（未所持 or 欲しい弾）</div>
+                <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                  {variants.filter(v=>(owned[v.id]||0)===0||(owned[v.id]||0)>=1).map(v=>{
+                    const wanted = wantedIds.includes(v.id);
+                    const got    = (owned[v.id]||0)>=1;
+                    if (got && !wanted) return null; // 持ってて欲しくないものは非表示（チェック済みのみ）
+                    return (
+                      <button key={v.id} onClick={()=>toggleWanted(v.id)}
+                        style={{ padding:"5px 12px",borderRadius:20,border:`1px solid ${wanted?"rgba(244,114,182,0.6)":"rgba(255,255,255,0.1)"}`,background:wanted?"rgba(244,114,182,0.15)":"transparent",color:wanted?"#f472b6":"#9ca3af",fontSize:11,fontWeight:wanted?700:400,cursor:"pointer",transition:"all 0.15s" }}>
+                        {wanted?"💖":"○"} {v.name}{v.rarity?` (${v.rarity})`:""}
+                      </button>
+                    );
+                  })}
+                  {variants.filter(v=>(owned[v.id]||0)===0).length===0&&wantedIds.length===0&&(
+                    <div style={{ fontSize:11,color:"#4b5563" }}>未所持の弾をタップして欲しいリストに追加</div>
+                  )}
+                </div>
+                {/* Show all variants for wanted toggle */}
+                <div style={{ marginTop:8 }}>
+                  <div style={{ fontSize:10,color:"#6b7280",marginBottom:6 }}>未所持の弾:</div>
+                  <div style={{ display:"flex",flexWrap:"wrap",gap:5 }}>
+                    {variants.filter(v=>(owned[v.id]||0)===0).map(v=>{
+                      const wanted=wantedIds.includes(v.id);
+                      return (
+                        <button key={v.id} onClick={()=>toggleWanted(v.id)}
+                          style={{ padding:"4px 10px",borderRadius:20,border:`1px solid ${wanted?"rgba(244,114,182,0.5)":"rgba(255,255,255,0.08)"}`,background:wanted?"rgba(244,114,182,0.12)":"transparent",color:wanted?"#f472b6":"#6b7280",fontSize:10,cursor:"pointer" }}>
+                          {wanted?"💖 ":""}{v.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Share button */}
+              {(surplusTotal>0||wantedCount>0) && (
+                <button onClick={copyShareText} style={{ width:"100%",padding:"10px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#1d9bf0,#818cf8)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:14 }}>
+                  𝕏 交換希望をXにシェア
+                </button>
+              )}
+
+              {/* Trade history (PRO) */}
+              <div>
+                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
+                  <div style={{ fontSize:12,fontWeight:700,color:"#c084fc" }}>📒 交換履歴 {isPro?"":"（PRO機能）"}</div>
+                  {isPro && <button onClick={()=>setShowTradeAdd(true)} style={{ fontSize:11,color:"#e879f9",background:"rgba(232,121,249,0.1)",border:"1px solid rgba(232,121,249,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer" }}>＋ 記録</button>}
+                </div>
+                {!isPro ? (
+                  <div style={{ fontSize:11,color:"#4b5563",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.15)",borderRadius:8,padding:"10px 12px" }}>
+                    PROプランで誰と何を交換したかを記録できます
+                  </div>
+                ) : tradeHistory.length===0 ? (
+                  <div style={{ fontSize:11,color:"#4b5563",padding:"8px 0" }}>まだ交換履歴がありません</div>
+                ) : (
+                  <div style={{ display:"flex",flexDirection:"column",gap:5,maxHeight:180,overflowY:"auto" }}>
+                    {[...tradeHistory].reverse().map(t=>{
+                      const given    = variants.find(v=>v.id===t.givenId);
+                      const received = variants.find(v=>v.id===t.receivedId);
+                      return (
+                        <div key={t.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8 }}>
+                          <span style={{ fontSize:10,color:"#6b7280",whiteSpace:"nowrap" }}>{t.date}</span>
+                          <span style={{ fontSize:12,flex:1,color:"#d1d5db" }}>
+                            <span style={{ color:"#60a5fa" }}>{given?.name||"?"}</span>
+                            <span style={{ color:"#6b7280",margin:"0 4px" }}>→</span>
+                            <span style={{ color:"#f472b6" }}>{received?.name||"?"}</span>
+                            {t.partner&&<span style={{ color:"#9ca3af",marginLeft:6 }}>@{t.partner}</span>}
+                          </span>
+                          <button onClick={()=>deleteTrade(t.id)} style={{ background:"none",border:"none",color:"#4b5563",cursor:"pointer",fontSize:12 }}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── History tab ── */}
+          {innerTab==="history" && (
+            <div>
+              <div style={{ fontSize:12,fontWeight:700,color:"#c084fc",marginBottom:8 }}>📋 引いた履歴（全件）</div>
+              {logs.length===0 ? (
+                <div style={{ fontSize:12,color:"#4b5563",textAlign:"center",padding:"16px 0" }}>まだ記録がありません</div>
+              ) : (
+                <div style={{ maxHeight:260,overflowY:"auto",display:"flex",flexDirection:"column",gap:4 }}>
+                  {Object.entries(logsByDate).map(([date,dayLogs])=>(
+                    <div key={date}>
+                      <div style={{ fontSize:10,color:"#6b7280",fontWeight:600,marginBottom:4,marginTop:6 }}>📅 {date}</div>
+                      {dayLogs.map(l=>{
+                        const v=variants.find(v=>v.id===l.variantId);
+                        return (
+                          <div key={l.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"5px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,marginBottom:2 }}>
+                            <span style={{ fontSize:13 }}>🎰</span>
+                            <span style={{ flex:1,fontSize:12,color:"#d1d5db" }}>{v?.name||"不明"}</span>
+                            {l.count>1&&<span style={{ fontSize:11,color:"#60a5fa",fontWeight:700 }}>×{l.count}</span>}
+                            {v?.rarity&&<span style={{ fontSize:10,color:RARITY_COLOR[v.rarity]||"#6b7280",fontWeight:700 }}>{v.rarity}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Trade add modal */}
+      {showTradeAdd && (
+        <TradeAddModal variants={variants} onClose={()=>setShowTradeAdd(false)} onAdd={(t)=>{ addTrade(t); setShowTradeAdd(false); }} />
+      )}
+    </div>
+  );
+}
+
+// ─── Trade Add Modal ──────────────────────────────────────────
+function TradeAddModal({ variants, onClose, onAdd }) {
+  const [givenId,setGivenId]       = useState(variants[0]?.id||"");
+  const [receivedId,setReceivedId] = useState(variants[0]?.id||"");
+  const [partner,setPartner]       = useState("");
+  const [memo,setMemo]             = useState("");
+  const submit = () => { if(!givenId||!receivedId) return; onAdd({givenId,receivedId,partner:partner.trim(),memo:memo.trim()}); };
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:380 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:16,fontWeight:800,color:"#e879f9" }}>🔄 交換を記録</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={S.fieldGroup}>
+          <label style={S.label}>渡した弾（自分→相手）</label>
+          <select value={givenId} onChange={e=>setGivenId(e.target.value)} style={{ ...S.input,cursor:"pointer" }}>
+            {variants.map(v=><option key={v.id} value={v.id}>{v.name}{v.rarity?` (${v.rarity})`:""}</option>)}
+          </select>
+        </div>
+        <div style={{ textAlign:"center",fontSize:18,margin:"4px 0",color:"#6b7280" }}>⇄</div>
+        <div style={S.fieldGroup}>
+          <label style={S.label}>もらった弾（相手→自分）</label>
+          <select value={receivedId} onChange={e=>setReceivedId(e.target.value)} style={{ ...S.input,cursor:"pointer" }}>
+            {variants.map(v=><option key={v.id} value={v.id}>{v.name}{v.rarity?` (${v.rarity})`:""}</option>)}
+          </select>
+        </div>
+        <div style={S.fieldGroup}><label style={S.label}>相手のXID（任意）</label><input value={partner} onChange={e=>setPartner(e.target.value)} placeholder="@username" style={S.input} maxLength={50}/></div>
+        <div style={S.fieldGroup}><label style={S.label}>メモ（任意）</label><input value={memo} onChange={e=>setMemo(e.target.value)} placeholder="オフ会、DM交換など" style={S.input} maxLength={60}/></div>
+        <button onClick={submit} style={{ width:"100%",padding:"11px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer" }}>記録する</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Random Set Modal ─────────────────────────────────────
+function AddRandomSetModal({ onClose, onAdd }) {
+  const [name,setName]       = useState("");
+  const [series,setSeries]   = useState("");
+  const [randType,setRandType] = useState("trading_card");
+  const [emoji,setEmoji]     = useState("🎰");
+  const [variants,setVariants] = useState([{id:newUid(),name:"",rarity:""}]);
+  const [error,setError]     = useState("");
+
+  const RAND_TYPES = [
+    {id:"trading_card",label:"🃏 トレカ"},
+    {id:"badge_random",label:"🔵 缶バッジ"},
+    {id:"kuji",        label:"🎰 くじ"},
+    {id:"other",       label:"📦 その他"},
+  ];
+  const EMOJIS = ["🎰","🃏","🔵","🎪","⭐","💎","🌸","🎀","🔥","👑"];
+  const RARITIES = ["","N","R","SR","SSR","SP","SEC","1等","2等","3等","ラスト1"];
+
+  const addVariant    = ()=>setVariants(prev=>[...prev,{id:newUid(),name:"",rarity:""}]);
+  const removeVariant = (id)=>setVariants(prev=>prev.filter(v=>v.id!==id));
+  const updateVariant = (id,field,val)=>setVariants(prev=>prev.map(v=>v.id===id?{...v,[field]:val}:v));
+
+  const submit = ()=>{
+    if (!name.trim()){setError("セット名を入力してください");return;}
+    const filled = variants.filter(v=>v.name.trim());
+    if (!filled.length){setError("弾・種類を最低1つ入力してください");return;}
+    onAdd({ id:newUid(), name:name.trim(), series:series.trim(), randType, emoji, variants:filled.map(v=>({...v,name:v.name.trim()})), ownedVariants:{}, drawLogs:[], totalDraws:0, createdAt:new Date().toISOString() });
+    onClose();
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:480 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🎰 ランダムセットを追加</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+
+        {/* Type */}
+        <div style={S.fieldGroup}>
+          <label style={S.label}>種類</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {RAND_TYPES.map(t=>(
+              <button key={t.id} onClick={()=>setRandType(t.id)} style={{ padding:"6px 12px",borderRadius:20,border:`1px solid ${randType===t.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.1)"}`,background:randType===t.id?"rgba(232,121,249,0.15)":"transparent",color:randType===t.id?"#e879f9":"#9ca3af",fontSize:12,fontWeight:600,cursor:"pointer" }}>{t.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Emoji */}
+        <div style={S.fieldGroup}>
+          <label style={S.label}>アイコン</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {EMOJIS.map(e=><button key={e} onClick={()=>setEmoji(e)} style={{ fontSize:22,width:38,height:38,borderRadius:8,border:`2px solid ${emoji===e?"#e879f9":"transparent"}`,background:"rgba(255,255,255,0.05)",cursor:"pointer" }}>{e}</button>)}
+          </div>
+        </div>
+
+        <div style={S.fieldGroup}><label style={S.label}>セット名 *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="例: 月ノ美兎 トレーディングカード vol.2" style={S.input} maxLength={60}/></div>
+        <div style={S.fieldGroup}><label style={S.label}>シリーズ</label><input value={series} onChange={e=>setSeries(e.target.value)} placeholder="例: にじさんじ" style={S.input} maxLength={40}/></div>
+
+        {/* Variants */}
+        <div style={S.fieldGroup}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+            <label style={{ ...S.label,marginBottom:0 }}>弾・種類一覧（全種を登録）</label>
+            <button onClick={addVariant} style={{ fontSize:11,color:"#e879f9",background:"rgba(232,121,249,0.1)",border:"1px solid rgba(232,121,249,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer" }}>＋ 追加</button>
+          </div>
+          <div style={{ maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:6 }}>
+            {variants.map((v,i)=>(
+              <div key={v.id} style={{ display:"flex",gap:6,alignItems:"center" }}>
+                <span style={{ fontSize:11,color:"#6b7280",width:20,textAlign:"right",flexShrink:0 }}>{i+1}</span>
+                <input value={v.name} onChange={e=>updateVariant(v.id,"name",e.target.value)} placeholder={`例: Aホロ / ${i+1}番`} style={{ ...S.input,flex:2,padding:"6px 10px",fontSize:12 }} maxLength={40}/>
+                <select value={v.rarity} onChange={e=>updateVariant(v.id,"rarity",e.target.value)} style={{ ...S.input,flex:1,padding:"6px 8px",fontSize:11,cursor:"pointer" }}>
+                  {RARITIES.map(r=><option key={r} value={r}>{r||"レアリティ"}</option>)}
+                </select>
+                {variants.length>1 && <button onClick={()=>removeVariant(v.id)} style={{ background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14,flexShrink:0 }}>✕</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600 }}>{error}</div>}
+        <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer" }}>追加する</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Draw Modal ───────────────────────────────────────────────
+function DrawModal({ set, onClose, onRecord }) {
+  const variants = set?.variants||[];
+  // counts per variant for this draw session
+  const [counts, setCounts] = useState(()=>Object.fromEntries(variants.map(v=>[v.id,0])));
+  const [quickMode, setQuickMode] = useState(false); // quick: single click = +1
+
+  const setCount = (id,val)=>setCounts(prev=>({...prev,[id]:Math.max(0,val)}));
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+
+  const submit = ()=>{
+    const result = Object.entries(counts).filter(([,c])=>c>0).map(([variantId,count])=>({variantId,count}));
+    if (!result.length){ alert("1つ以上記録してください"); return; }
+    onRecord(result);
+  };
+
+  const RARITY_COLOR = { N:"#9ca3af", R:"#60a5fa", SR:"#a78bfa", SSR:"#f59e0b", SP:"#f472b6", SEC:"#ef4444" };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:460 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🎰 引いた結果を記録</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ fontSize:12,color:"#7c6a9a",marginBottom:14 }}>{set?.name}</div>
+
+        {/* Quick mode toggle */}
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10 }}>
+          <span style={{ fontSize:12,color:"#9ca3af",flex:1 }}>クイックモード（タップで＋1）</span>
+          <button onClick={()=>setQuickMode(q=>!q)} style={{ width:42,height:24,borderRadius:12,border:"none",background:quickMode?"#e879f9":"rgba(255,255,255,0.1)",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+            <div style={{ width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:quickMode?21:3,transition:"left 0.2s" }}/>
+          </button>
+        </div>
+
+        <div style={{ maxHeight:300,overflowY:"auto",display:"flex",flexDirection:"column",gap:6,marginBottom:14 }}>
+          {variants.map(v=>{
+            const cnt = counts[v.id]||0;
+            return (
+              <div key={v.id} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:cnt>0?"rgba(232,121,249,0.08)":"rgba(255,255,255,0.03)",borderRadius:10,border:`1px solid ${cnt>0?"rgba(232,121,249,0.2)":"rgba(255,255,255,0.05)"}`,cursor:quickMode?"pointer":"default",transition:"all 0.15s" }}
+                onClick={()=>quickMode&&setCount(v.id,cnt+1)}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13,fontWeight:cnt>0?700:400,color:cnt>0?"#f0e8ff":"#9ca3af" }}>{v.name}</div>
+                  {v.rarity && <div style={{ fontSize:10,color:RARITY_COLOR[v.rarity]||"#6b7280",fontWeight:700 }}>{v.rarity}</div>}
+                </div>
+                {!quickMode && (
+                  <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                    <button onClick={()=>setCount(v.id,cnt-1)} style={{ width:24,height:24,borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.08)",color:"#f0e8ff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700 }}>−</button>
+                    <span style={{ width:24,textAlign:"center",fontSize:13,fontWeight:700,color:cnt>0?"#e879f9":"#6b7280" }}>{cnt}</span>
+                    <button onClick={()=>setCount(v.id,cnt+1)} style={{ width:24,height:24,borderRadius:"50%",border:"none",background:"rgba(232,121,249,0.2)",color:"#e879f9",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700 }}>＋</button>
+                  </div>
+                )}
+                {quickMode && cnt>0 && <span style={{ fontSize:16,fontWeight:900,color:"#e879f9",minWidth:24,textAlign:"center" }}>×{cnt}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
+          <span style={{ fontSize:12,color:"#7c6a9a" }}>今回の合計: <strong style={{ color:"#e879f9" }}>{total}枚</strong></span>
+          <button onClick={()=>setCounts(Object.fromEntries(variants.map(v=>[v.id,0])))} style={{ fontSize:11,color:"#6b7280",background:"none",border:"none",cursor:"pointer" }}>リセット</button>
+        </div>
+
+        <button onClick={submit} disabled={total===0} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:total>0?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.08)",color:total>0?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:total>0?"pointer":"default" }}>
+          {total>0?`${total}枚を記録する`:"引いた枚数を入力してください"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CollectionPage({ goods, counts, characters, isPro, onAdd, onUpdateStatus, onDelete, onUpdateChar, onAddCharacter, onDeleteCharacter, onUpgrade, loaded }) {
-  const [filter, setFilter]         = useState("all");
+  const [filter, setFilter]           = useState("all");
   const [typeFilter, setTypeFilter]   = useState("all");
   const [charFilter, setCharFilter]   = useState(null);
+  const [displayMode, setDisplayMode] = useState("grouped"); // "grouped" | "all"
   const [showCharManager, setShowCharManager] = useState(false);
   const [confirmId, setConfirmId]     = useState(null);
 
   let visible = goods.filter(g=>filter==="all"||g.status===filter);
   if (typeFilter!=="all") visible = visible.filter(g=>(g.goodType||"other")===typeFilter);
   if (charFilter) visible = visible.filter(g=>g.characterId===charFilter);
+
+  // grouped mode: merge goods with same name+series into one card with count
+  const grouped = displayMode==="grouped"
+    ? Object.values(visible.reduce((acc,g)=>{
+        const key = `${g.name}__${g.series||""}__${g.status}`;
+        if (!acc[key]) acc[key]={ ...g, _count:1, _ids:[g.id] };
+        else { acc[key]._count++; acc[key]._ids.push(g.id); }
+        return acc;
+      },{}))
+    : visible;
 
   return (
     <main style={S.main}>
@@ -348,7 +940,15 @@ function CollectionPage({ goods, counts, characters, isPro, onAdd, onUpdateStatu
             <button key={v} onClick={()=>setFilter(v)} style={{ ...S.filterBtn, ...(filter===v?S.filterBtnOn:{}) }}>{l}</button>
           ))}
         </div>
-        <button onClick={onAdd} style={S.addBtn}>＋ グッズ追加</button>
+        <div style={{ display:"flex",gap:6,alignItems:"center" }}>
+          {/* Display mode toggle */}
+          <div style={{ display:"flex",background:"rgba(255,255,255,0.05)",borderRadius:20,padding:2,border:"1px solid rgba(255,255,255,0.08)" }}>
+            {[["grouped","まとめ表示","⊞"],["all","全て表示","⊟"]].map(([m,l,icon])=>(
+              <button key={m} onClick={()=>setDisplayMode(m)} title={l} style={{ padding:"4px 12px",borderRadius:18,border:"none",background:displayMode===m?"rgba(232,121,249,0.25)":"transparent",color:displayMode===m?"#e879f9":"#6b7280",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap" }}>{icon} {l}</button>
+            ))}
+          </div>
+          <button onClick={onAdd} style={S.addBtn}>＋ グッズ追加</button>
+        </div>
       </div>
 
       {!loaded?<div style={S.emptyMsg}>読み込み中…</div>
@@ -360,9 +960,10 @@ function CollectionPage({ goods, counts, characters, isPro, onAdd, onUpdateStatu
         </div>
       ):(
         <div style={S.grid}>
-          {visible.map(g=><GoodCard key={g.id} good={g} characters={characters} isPro={isPro}
-            onStatusChange={s=>onUpdateStatus(g.id,s)} onDelete={()=>setConfirmId(g.id)}
-            onCharChange={cid=>onUpdateChar(g.id,cid)} />)}
+          {grouped.map(g=><GoodCard key={g._ids?g._ids[0]:g.id} good={g} count={g._count||1} characters={characters} isPro={isPro}
+            onStatusChange={s=>{ if(g._ids) g._ids.forEach(id=>onUpdateStatus(id,s)); else onUpdateStatus(g.id,s); }}
+            onDelete={()=>setConfirmId(g._ids?g._ids[0]:g.id)}
+            onCharChange={cid=>onUpdateChar(g._ids?g._ids[0]:g.id,cid)} />)}
         </div>
       )}
 
@@ -384,7 +985,7 @@ function CollectionPage({ goods, counts, characters, isPro, onAdd, onUpdateStatu
   );
 }
 
-function GoodCard({ good, characters, isPro, onStatusChange, onDelete, onCharChange }) {
+function GoodCard({ good, count=1, characters, isPro, onStatusChange, onDelete, onCharChange }) {
   const st=STATUS[good.status];
   const [open,setOpen]=useState(false);
   const char=characters.find(c=>c.id===good.characterId);
@@ -393,6 +994,7 @@ function GoodCard({ good, characters, isPro, onStatusChange, onDelete, onCharCha
       <div style={S.cardImgWrap}>
         {good.image?<img src={good.image} alt={good.name} style={S.cardImg}/>:<div style={S.cardEmoji}>{good.emoji||"📦"}</div>}
         <div style={{ ...S.badge,background:st.bg,color:st.color }}>{st.icon} {st.label}</div>
+        {count>1 && <div style={{ position:"absolute",top:8,right:8,background:"rgba(232,121,249,0.9)",color:"#fff",borderRadius:12,padding:"2px 8px",fontSize:11,fontWeight:900 }}>×{count}</div>}
         {char&&<div style={{ position:"absolute",bottom:6,right:6,fontSize:9,background:`${char.color}33`,color:char.color,borderRadius:10,padding:"1px 6px",fontWeight:700,border:`1px solid ${char.color}44` }}>{char.emoji} {char.name}</div>}
       </div>
       <div style={S.cardBody}>
@@ -401,6 +1003,7 @@ function GoodCard({ good, characters, isPro, onStatusChange, onDelete, onCharCha
         {good.series&&<div style={S.cardSeries}>{good.series}</div>}
         {good.purchaseDate&&<div style={S.cardMeta}>📅 {good.purchaseDate}</div>}
         {good.releaseDate&&<div style={S.cardMeta}>🔖 発売: {good.releaseDate}</div>}
+        {good.officialUrl&&<a href={good.officialUrl} target="_blank" rel="noreferrer" style={{ fontSize:10,color:"#818cf8",display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>🔗 公式サイト</a>}
       </div>
       <div style={S.cardActions}>
         {isPro&&characters.length>0&&(
@@ -514,6 +1117,18 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   const maxZFree=useRef(10);
 
   const addFreeItem=(goodId)=>{ if(onFree.has(goodId)) return; maxZFree.current++; onUpdateAltar({freeItems:[...freeItems,{id:newUid(),goodId,x:80+Math.random()*320,y:80+Math.random()*160,scale:1,zIndex:maxZFree.current}]}); showToast("自由配置に追加しました ✓"); };
+
+  // Layer reorder: swap zIndex values to move item forward/backward
+  const reorderLayer=(id,dir)=>{
+    const sorted=[...freeItems].sort((a,b)=>(b.zIndex||0)-(a.zIndex||0));
+    const idx=sorted.findIndex(i=>i.id===id);
+    const swapIdx=dir==="up"?idx-1:idx+1;
+    if(swapIdx<0||swapIdx>=sorted.length) return;
+    const a=sorted[idx],b=sorted[swapIdx];
+    onUpdateAltar({freeItems:freeItems.map(i=>i.id===a.id?{...i,zIndex:b.zIndex}:i.id===b.id?{...i,zIndex:a.zIndex}:i)});
+  };
+  const scaleLayer=(id,val)=>onUpdateAltar({freeItems:freeItems.map(i=>i.id===id?{...i,scale:val}:i)});
+  const [showLayerPanel,setShowLayerPanel]=useState(false);
   const removeFreeItem=(id)=>onUpdateAltar({freeItems:freeItems.filter(i=>i.id!==id)});
   const scaleFreeItem=(id,d)=>onUpdateAltar({freeItems:freeItems.map(i=>i.id===id?{...i,scale:Math.max(0.5,Math.min(2.5,i.scale+d))}:i)});
 
@@ -562,7 +1177,9 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <button key={m} onClick={()=>!viewingShared&&onUpdateAltar({altarMode:m})} style={{ ...S.modeBtn,...(altarMode===m?S.modeBtnOn:{}) }}>{l}</button>
         ))}
         {!viewingShared&&<button onClick={onOpenTemplates} style={{ ...S.modeBtn,border:`1px solid ${template.border}`,color:template.accent }}>{template.emoji} テンプレ</button>}
+        {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
+        {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
         {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoIds?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoIds?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
@@ -575,9 +1192,13 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId}/>
           <AltarTopBar template={template} altarName={altar.name}/>
-          {shelf.map((row,rIdx)=>(
+          {shelf.map((row,rIdx)=>{
+            const ss=SHELF_STYLES.find(s=>s.id===(altar.shelfStyleId||"default"))||SHELF_STYLES[0];
+            return (
             <div key={rIdx} style={{ ...S.shelfRow }}>
-              <div style={{ ...S.shelfPlank,background:template.plank }}/>
+              <div style={{ ...S.shelfPlank,background:ss.plank,border:ss.plankBorder||"none",boxShadow:ss.shadow,height:ss.height||8,borderRadius:ss.radius,backdropFilter:ss.blur?"blur(8px)":undefined }}>
+                {ss.grain&&<div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)",borderRadius:ss.radius }}/>}
+              </div>
               <div style={{ display:"grid",gridTemplateColumns:`repeat(${SHELF_COLS},1fr)`,gap:6,paddingBottom:14 }}>
                 {row.map((cellId,cIdx)=>{
                   const good=cellId?goodById(cellId):null;
@@ -600,8 +1221,14 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
                 })}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
+      )}
+
+      {/* Layer panel */}
+      {altarMode==="free"&&showLayerPanel&&!viewingShared&&(
+        <LayerPanel freeItems={freeItems} goodById={goodById} onReorder={reorderLayer} onScaleDepth={scaleLayer}/>
       )}
 
       {/* Free mode */}
@@ -1175,67 +1802,230 @@ function ShareModal({ altar, template, goodById, goods, onClose }) {
 
 // ─── Add Modal ────────────────────────────────────────────────
 function AddModal({ onClose, onAdd, characters, isPro }) {
-  const [name,setName]=useState(""); const [series,setSeries]=useState(""); const [status,setStatus]=useState("owned"); const [goodType,setGoodType]=useState("other");
-  const [image,setImage]=useState(null); const [emoji,setEmoji]=useState("📦"); const [imgMode,setImgMode]=useState("emoji");
-  const [purchaseDate,setPurchaseDate]=useState(""); const [releaseDate,setReleaseDate]=useState(""); const [memo,setMemo]=useState("");
-  const [characterId,setCharacterId]=useState(null); const [error,setError]=useState("");
-  const fileRef=useRef(null);
-  const EMOJIS=["📦","🧸","🖼️","🪆","🎀","🎵","📚","🎮","☕","⭐","🌸","💎","🎪","🖊️","🎭","🏆"];
-  const handleFile=async(e)=>{ const f=e.target.files[0]; if(!f) return; if(f.size>5*1024*1024){setError("5MB以下にしてください");return;} setImage(await readFileAsDataURL(f)); setError(""); };
-  const submit=()=>{ if(!name.trim()){setError("グッズ名を入力してください");return;} onAdd({id:newUid(),name:name.trim(),series:series.trim(),status,goodType,image:imgMode==="upload"?image:null,emoji:imgMode==="emoji"?emoji:"📦",purchaseDate,releaseDate,memo:memo.trim(),characterId,createdAt:new Date().toISOString()}); onClose(); };
+  const [name,setName]           = useState("");
+  const [series,setSeries]       = useState("");
+  const [status,setStatus]       = useState("owned");
+  const [goodType,setGoodType]   = useState("other");
+  const [imgMode,setImgMode]     = useState("emoji"); // "emoji"|"upload"|"url"
+  const [image,setImage]         = useState(null);
+  const [emojiInput,setEmojiInput] = useState("📦");  // free: picker selection | pro: free text
+  const [officialUrl,setOfficialUrl] = useState("");
+  const [purchaseDate,setPurchaseDate] = useState("");
+  const [releaseDate,setReleaseDate]   = useState("");
+  const [memo,setMemo]           = useState("");
+  const [characterId,setCharacterId] = useState(null);
+  const [error,setError]         = useState("");
+  const fileRef = useRef(null);
+
+  // Free plan emoji picker options
+  const EMOJI_PICKS = ["📦","🧸","🖼️","🪆","🎀","🎵","📚","🎮","☕","⭐","🌸","💎","🎪","🖊️","🎭","🏆","🃏","🔵","🎰","🌙","🔥","🐱","🦊","🐰","🌈"];
+
+  const handleFile = async(e) => {
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size>5*1024*1024){setError("5MB以下にしてください");return;}
+    setImage(await readFileAsDataURL(f)); setError("");
+  };
+
+  const resolvedEmoji = emojiInput || "📦";
+
+  const submit = () => {
+    if(!name.trim()){setError("グッズ名を入力してください");return;}
+    if(imgMode==="url"&&officialUrl&&!/^https?:\/\/.+/.test(officialUrl)){setError("URLはhttpまたはhttpsで始めてください");return;}
+    onAdd({
+      id:newUid(), name:name.trim(), series:series.trim(), status, goodType,
+      image: imgMode==="upload"?image:null,
+      emoji: resolvedEmoji,
+      officialUrl: officialUrl.trim()||null,
+      purchaseDate, releaseDate, memo:memo.trim(), characterId,
+      createdAt:new Date().toISOString(),
+    });
+    onClose();
+  };
+
+  // Image mode tabs: "欲しい"なら "emoji" と "url" を優先表示
+  const imgTabs = status==="wanted"
+    ? [["emoji","アイコン"],["url","公式URL"],["upload","画像"]]
+    : [["emoji","アイコン"],["upload","画像"],["url","公式URL"]];
+
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={S.modal} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
           <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>グッズを追加</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+
+        {/* Status */}
+        <div style={{ display:"flex",gap:8,marginBottom:14 }}>
           {Object.entries(STATUS).map(([k,v])=>(
-            <button key={k} onClick={()=>setStatus(k)} style={{ flex:1,padding:"8px 4px",borderRadius:12,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s",background:status===k?v.bg:"transparent",color:status===k?v.color:"#666",border:`2px solid ${status===k?v.color:"transparent"}` }}>{v.icon} {v.label}</button>
+            <button key={k} onClick={()=>setStatus(k)} style={{ flex:1,padding:"8px 4px",borderRadius:12,fontSize:12,fontWeight:700,cursor:"pointer",background:status===k?v.bg:"transparent",color:status===k?v.color:"#666",border:`2px solid ${status===k?v.color:"transparent"}` }}>{v.icon} {v.label}</button>
           ))}
         </div>
-        <div style={{ display:"flex",gap:8,marginBottom:12 }}>
-          {[["emoji","絵文字"],["upload","画像アップロード"]].map(([m,l])=>(
-            <button key={m} onClick={()=>setImgMode(m)} style={{ flex:1,padding:"7px",borderRadius:10,border:`1px solid ${imgMode===m?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:imgMode===m?"rgba(232,121,249,0.15)":"transparent",color:imgMode===m?"#e879f9":"#9ca3af",fontSize:12,fontWeight:600,cursor:"pointer" }}>{l}</button>
+
+        {/* Image mode tabs */}
+        <div style={{ display:"flex",gap:6,marginBottom:12 }}>
+          {imgTabs.map(([m,l])=>(
+            <button key={m} onClick={()=>setImgMode(m)} style={{ flex:1,padding:"6px",borderRadius:10,border:`1px solid ${imgMode===m?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:imgMode===m?"rgba(232,121,249,0.15)":"transparent",color:imgMode===m?"#e879f9":"#9ca3af",fontSize:11,fontWeight:600,cursor:"pointer" }}>{l}</button>
           ))}
         </div>
-        {imgMode==="emoji"?(
-          <div style={{ display:"flex",flexWrap:"wrap",gap:7,marginBottom:16,justifyContent:"center" }}>
-            {EMOJIS.map(e=><button key={e} onClick={()=>setEmoji(e)} style={{ fontSize:24,background:"rgba(255,255,255,0.05)",border:`2px solid ${emoji===e?"#e879f9":"transparent"}`,borderRadius:10,width:42,height:42,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>{e}</button>)}
-          </div>
-        ):(
-          <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:120,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",marginBottom:16,color:"#7c6a9a",overflow:"hidden" }} onClick={()=>fileRef.current?.click()}>
-            {image?<img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>:<><div style={{ fontSize:28,marginBottom:6 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>}
+
+        {/* Emoji / icon */}
+        {imgMode==="emoji" && (<>
+          {isPro ? (
+            <div style={S.fieldGroup}>
+              <label style={S.label}>アイコン（PRO: 自由入力）<span style={{ color:"#c084fc",marginLeft:4 }}>👑</span></label>
+              <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                <div style={{ fontSize:36,width:52,height:52,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.05)",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",flexShrink:0 }}>{resolvedEmoji}</div>
+                <input value={emojiInput} onChange={e=>setEmojiInput(e.target.value)} placeholder="絵文字を入力 例: 🌸✨" style={{ ...S.input,flex:1 }} maxLength={10}/>
+              </div>
+              <div style={{ fontSize:10,color:"#6b7280",marginTop:4 }}>複数絵文字や記号も入力できます（例: 🎪🎀）</div>
+            </div>
+          ) : (
+            <div style={{ marginBottom:14 }}>
+              <label style={S.label}>アイコン</label>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center" }}>
+                {EMOJI_PICKS.map(e=>(
+                  <button key={e} onClick={()=>setEmojiInput(e)} style={{ fontSize:22,width:40,height:40,borderRadius:8,border:`2px solid ${emojiInput===e?"#e879f9":"transparent"}`,background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>{e}</button>
+                ))}
+              </div>
+              <div style={{ fontSize:10,color:"#6b7280",marginTop:6,textAlign:"center" }}>
+                👑 PROプランで絵文字を自由入力できます
+              </div>
+            </div>
+          )}
+        </>)}
+
+        {/* Upload */}
+        {imgMode==="upload" && (
+          <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:110,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",marginBottom:14,color:"#7c6a9a",overflow:"hidden" }} onClick={()=>fileRef.current?.click()}>
+            {image?<img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>:<><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>}
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display:"none" }}/>
           </div>
         )}
+
+        {/* Official URL */}
+        {imgMode==="url" && (
+          <div style={S.fieldGroup}>
+            <label style={S.label}>公式サイトURL</label>
+            <input value={officialUrl} onChange={e=>setOfficialUrl(e.target.value)} placeholder="https://shop.nijisanji.jp/..." style={S.input} maxLength={300}/>
+            <div style={{ fontSize:10,color:"#6b7280",marginTop:4 }}>
+              公式ショップのページURLを貼り付けると、欲しいグッズとして登録できます
+            </div>
+            {officialUrl && (
+              <a href={officialUrl} target="_blank" rel="noreferrer" style={{ display:"inline-block",marginTop:6,fontSize:11,color:"#818cf8",textDecoration:"underline" }}>🔗 URLを確認する</a>
+            )}
+          </div>
+        )}
+
+        {/* Fields */}
         <div style={S.fieldGroup}><label style={S.label}>グッズ名 *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="例: 月ノ美兎 アクリルスタンド" style={S.input} maxLength={60}/></div>
         <div style={S.fieldGroup}><label style={S.label}>シリーズ / タグ</label><input value={series} onChange={e=>setSeries(e.target.value)} placeholder="例: にじさんじ" style={S.input} maxLength={40}/></div>
+
         <div style={S.fieldGroup}>
           <label style={S.label}>グッズの種類</label>
-          <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:5 }}>
             {GOOD_TYPES.map(t=>(
-              <button key={t.id} onClick={()=>setGoodType(t.id)} style={{ padding:"5px 10px",borderRadius:20,border:`1px solid ${goodType===t.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.1)"}`,background:goodType===t.id?"rgba(232,121,249,0.15)":"transparent",color:goodType===t.id?"#e879f9":"#9ca3af",fontSize:11,fontWeight:600,cursor:"pointer" }}>{t.emoji} {t.label}</button>
+              <button key={t.id} onClick={()=>setGoodType(t.id)} style={{ padding:"4px 10px",borderRadius:20,border:`1px solid ${goodType===t.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.1)"}`,background:goodType===t.id?"rgba(232,121,249,0.15)":"transparent",color:goodType===t.id?"#e879f9":"#9ca3af",fontSize:11,fontWeight:600,cursor:"pointer" }}>{t.emoji} {t.label}</button>
             ))}
           </div>
         </div>
+
         {isPro&&characters.length>0&&(
           <div style={S.fieldGroup}>
-            <label style={S.label}>キャラクター（PRO）</label>
+            <label style={S.label}>キャラクター <span style={{ color:"#c084fc" }}>👑</span></label>
             <select value={characterId||""} onChange={e=>setCharacterId(e.target.value||null)} style={{ ...S.input,cursor:"pointer" }}>
               <option value="">— 未設定</option>
               {characters.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
             </select>
           </div>
         )}
+
         {status==="owned"&&<div style={S.fieldGroup}><label style={S.label}>購入日</label><input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} style={S.input}/></div>}
         {status==="reserved"&&<div style={S.fieldGroup}><label style={S.label}>発売予定日</label><input type="date" value={releaseDate} onChange={e=>setReleaseDate(e.target.value)} style={S.input}/></div>}
-        <div style={S.fieldGroup}><label style={S.label}>メモ</label><textarea value={memo} onChange={e=>setMemo(e.target.value)} placeholder="イベント限定品など" style={{ ...S.input,height:52,resize:"none" }} maxLength={100}/></div>
-        <div style={{ background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:10,padding:"10px 14px",fontSize:11,color:"#fbbf24",marginBottom:14,lineHeight:1.6 }}>⚠ 実際に所持・購入・予約したグッズのみ登録してください。将来的にECショップの購入履歴と自動連携予定です。</div>
+        <div style={S.fieldGroup}><label style={S.label}>メモ</label><textarea value={memo} onChange={e=>setMemo(e.target.value)} placeholder="イベント限定品など" style={{ ...S.input,height:48,resize:"none" }} maxLength={100}/></div>
+
+        {status==="wanted" && (
+          <div style={{ background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#93c5fd",marginBottom:12,lineHeight:1.6 }}>
+            💡 欲しいグッズは公式サイトのURLを貼り付けて登録できます。画像が手元になくてもOK！
+          </div>
+        )}
+        {status!=="wanted" && (
+          <div style={{ background:"rgba(245,158,11,0.07)",border:"1px solid rgba(245,158,11,0.18)",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#fbbf24",marginBottom:12,lineHeight:1.6 }}>
+            ⚠ 実際に所持・購入・予約したグッズのみ登録してください
+          </div>
+        )}
+
         {error&&<div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600 }}>{error}</div>}
         <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer" }}>追加する</button>
       </div>
+    </div>
+  );
+}
+
+// ─── Shelf Style Picker ──────────────────────────────────────
+function ShelfStylePicker({ currentId, isPremium, onChange }) {
+  const [open, setOpen] = useState(false);
+  const current = SHELF_STYLES.find(s=>s.id===currentId)||SHELF_STYLES[0];
+  return (
+    <div style={{ position:"relative" }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ ...S.modeBtn,border:"1px solid rgba(165,180,252,0.3)",color:"#a5b4fc" }}>
+        {current.emoji} 棚素材
+      </button>
+      {open && (
+        <div style={{ position:"absolute",top:36,left:0,background:"#1a1230",border:"1px solid rgba(165,180,252,0.2)",borderRadius:14,padding:10,zIndex:50,boxShadow:"0 8px 30px rgba(0,0,0,0.5)",minWidth:220 }}>
+          <div style={{ fontSize:11,color:"#6b7280",marginBottom:8,fontWeight:600 }}>棚の素材を選ぶ</div>
+          {SHELF_STYLES.map(ss=>{
+            const locked = !ss.free && !isPremium;
+            return (
+              <div key={ss.id} onClick={()=>{ if(!locked){onChange(ss.id);setOpen(false); }}}
+                style={{ display:"flex",alignItems:"center",gap:8,padding:"7px 8px",borderRadius:8,cursor:locked?"default":"pointer",background:currentId===ss.id?"rgba(165,180,252,0.15)":"transparent",marginBottom:2,opacity:locked?0.5:1 }}>
+                {/* Plank preview */}
+                <div style={{ width:40,height:ss.height||8,borderRadius:ss.radius,background:ss.plank,border:ss.plankBorder,boxShadow:ss.shadow,flexShrink:0 }}/>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:12,fontWeight:700,color:currentId===ss.id?"#a5b4fc":"#d1d5db" }}>{ss.emoji} {ss.name}</div>
+                </div>
+                {locked && <span style={{ fontSize:9,color:"#c084fc",background:"rgba(192,132,252,0.15)",borderRadius:6,padding:"1px 5px",fontWeight:700 }}>PRO</span>}
+                {currentId===ss.id && <span style={{ fontSize:10,color:"#a5b4fc",fontWeight:700 }}>✓</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Layer Panel (free mode) ──────────────────────────────────
+// Shows stacking order and allows reordering for depth effect
+function LayerPanel({ freeItems, goodById, onReorder, onScaleDepth }) {
+  const sorted = [...freeItems].sort((a,b)=>(b.zIndex||0)-(a.zIndex||0)); // front to back
+  if (sorted.length===0) return null;
+  return (
+    <div style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px 12px",marginBottom:12 }}>
+      <div style={{ fontSize:11,fontWeight:700,color:"#a5b4fc",marginBottom:8 }}>🔲 レイヤー（前後）</div>
+      <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+        {sorted.map((item,idx)=>{
+          const good=goodById(item.goodId);
+          const isFront=idx===0;
+          const isBack=idx===sorted.length-1;
+          return (
+            <div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"5px 8px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid rgba(255,255,255,0.05)" }}>
+              <span style={{ fontSize:14,width:20,textAlign:"center" }}>{good?.emoji||"📦"}</span>
+              <span style={{ flex:1,fontSize:11,color:"#d1d5db",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{good?.name||"?"}</span>
+              <span style={{ fontSize:9,color:"#6b7280",width:28,textAlign:"center" }}>{isFront?"最前面":isBack?"最背面":""}</span>
+              {/* Depth scale: further back = smaller + dimmer */}
+              <input type="range" min={0.5} max={2.5} step={0.05} value={item.scale||1}
+                onChange={e=>onScaleDepth(item.id,parseFloat(e.target.value))}
+                style={{ width:60,accentColor:"#a5b4fc" }}/>
+              <div style={{ display:"flex",gap:2 }}>
+                <button onClick={()=>!isFront&&onReorder(item.id,"up")} disabled={isFront} style={{ width:18,height:18,border:"none",borderRadius:4,background:isFront?"rgba(255,255,255,0.03)":"rgba(165,180,252,0.15)",color:isFront?"#374151":"#a5b4fc",fontSize:10,cursor:isFront?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>↑</button>
+                <button onClick={()=>!isBack&&onReorder(item.id,"down")} disabled={isBack} style={{ width:18,height:18,border:"none",borderRadius:4,background:isBack?"rgba(255,255,255,0.03)":"rgba(165,180,252,0.15)",color:isBack?"#374151":"#a5b4fc",fontSize:10,cursor:isBack?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>↓</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize:9,color:"#4b5563",marginTop:6 }}>↑↓ で前後を変更 · スライダーでサイズ調整（奥を小さくすると立体感が出ます）</div>
     </div>
   );
 }
