@@ -137,7 +137,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), freeItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, decoIds:[], lightId:null, layers:[] };
+  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -1118,6 +1118,37 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
   const addFreeItem=(goodId)=>{ if(onFree.has(goodId)) return; maxZFree.current++; onUpdateAltar({freeItems:[...freeItems,{id:newUid(),goodId,x:80+Math.random()*320,y:80+Math.random()*160,scale:1,zIndex:maxZFree.current}]}); showToast("自由配置に追加しました ✓"); };
 
+  // ── Deco sticker drag ──────────────────────────────────────
+  const decoItems = altar.decoItems||[];
+  const [draggingDeco,setDraggingDeco]       = useState(null);
+  const [dragOffsetDeco,setDragOffsetDeco]   = useState({x:0,y:0});
+  const [selectedDeco,setSelectedDeco]       = useState(null);
+  const maxZDeco = useRef(100);
+
+  const startDecoDrag = useCallback((e,id)=>{
+    e.preventDefault(); e.stopPropagation();
+    const rect=freeRef.current?.getBoundingClientRect()||{left:0,top:0};
+    const cx=e.touches?e.touches[0].clientX:e.clientX;
+    const cy=e.touches?e.touches[0].clientY:e.clientY;
+    const item=decoItems.find(i=>i.id===id);
+    if(!item) return;
+    maxZDeco.current++;
+    onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,zIndex:maxZDeco.current}:i)});
+    setDraggingDeco(id); setDragOffsetDeco({x:cx-rect.left-item.x,y:cy-rect.top-item.y});
+  },[decoItems,onUpdateAltar]);
+
+  const onDecoMove = useCallback((e)=>{
+    if(!draggingDeco) return;
+    const rect=freeRef.current?.getBoundingClientRect()||{left:0,top:0};
+    const cx=e.touches?e.touches[0].clientX:e.clientX;
+    const cy=e.touches?e.touches[0].clientY:e.clientY;
+    onUpdateAltar({decoItems:decoItems.map(i=>i.id===draggingDeco?{...i,x:cx-rect.left-dragOffsetDeco.x,y:cy-rect.top-dragOffsetDeco.y}:i)});
+  },[draggingDeco,dragOffsetDeco,decoItems,onUpdateAltar]);
+
+  const endDecoDrag = useCallback(()=>setDraggingDeco(null),[]);
+  const scaleDecoItem = (id,d)=>onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,scale:Math.max(0.5,Math.min(4,i.scale+d))}:i)});
+  const removeDecoItem = (id)=>{ onUpdateAltar({decoItems:decoItems.filter(i=>i.id!==id)}); setSelectedDeco(null); };
+
   // Layer reorder: swap zIndex values to move item forward/backward
   const reorderLayer=(id,dir)=>{
     const sorted=[...freeItems].sort((a,b)=>(b.zIndex||0)-(a.zIndex||0));
@@ -1136,7 +1167,20 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   const onFreeMove=useCallback((e)=>{ if(!draggingFree) return; const rect=freeRef.current?.getBoundingClientRect(); if(!rect) return; const cx=e.touches?e.touches[0].clientX:e.clientX; const cy=e.touches?e.touches[0].clientY:e.clientY; onUpdateAltar({freeItems:freeItems.map(i=>i.id===draggingFree?{...i,x:cx-rect.left-dragOffsetFree.x,y:cy-rect.top-dragOffsetFree.y}:i)}); },[draggingFree,dragOffsetFree,freeItems,onUpdateAltar]);
   const endFreeDrag=useCallback(()=>setDraggingFree(null),[]);
 
-  useEffect(()=>{ window.addEventListener("mousemove",onFreeMove); window.addEventListener("mouseup",endFreeDrag); window.addEventListener("touchmove",onFreeMove,{passive:false}); window.addEventListener("touchend",endFreeDrag); return()=>{ window.removeEventListener("mousemove",onFreeMove); window.removeEventListener("mouseup",endFreeDrag); window.removeEventListener("touchmove",onFreeMove); window.removeEventListener("touchend",endFreeDrag); }; },[onFreeMove,endFreeDrag]);
+  useEffect(()=>{
+    const mm=(e)=>{ onFreeMove(e); onDecoMove(e); };
+    const mu=()=>{ endFreeDrag(); endDecoDrag(); };
+    window.addEventListener("mousemove",mm);
+    window.addEventListener("mouseup",mu);
+    window.addEventListener("touchmove",mm,{passive:false});
+    window.addEventListener("touchend",mu);
+    return()=>{
+      window.removeEventListener("mousemove",mm);
+      window.removeEventListener("mouseup",mu);
+      window.removeEventListener("touchmove",mm);
+      window.removeEventListener("touchend",mu);
+    };
+  },[onFreeMove,endFreeDrag,onDecoMove,endDecoDrag]);
 
   return (
     <main style={S.main}>
@@ -1180,7 +1224,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
-        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoIds?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoIds?.length||altar.lightId)?` ✓`:""}</button>}
+        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
 
@@ -1192,6 +1236,11 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId}/>
           <AltarTopBar template={template} altarName={altar.name}/>
+          {/* Deco stickers on shelf */}
+          <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
+            draggingDeco={draggingDeco} selectedDeco={selectedDeco}
+            onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
+            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
           {shelf.map((row,rIdx)=>{
             const ss=SHELF_STYLES.find(s=>s.id===(altar.shelfStyleId||"default"))||SHELF_STYLES[0];
             return (
@@ -1239,6 +1288,11 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId}/>
+          {/* Deco stickers on free altar */}
+          <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
+            draggingDeco={draggingDeco} selectedDeco={selectedDeco}
+            onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
+            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
           <div style={{ position:"absolute",bottom:0,left:0,right:0,height:"30%",background:template.floor,borderTop:`1px solid ${template.border}` }}/>
           {freeItems.length===0&&<div style={{ position:"absolute",top:"55%",left:"50%",transform:"translate(-50%,-50%)",textAlign:"center",color:`${template.accent}44`,pointerEvents:"none" }}><div style={{ fontSize:32,marginBottom:6 }}>✦</div><div style={{ fontSize:12 }}>下のグッズをクリックして配置しよう</div></div>}
           {freeItems.map(item=>{ const good=goodById(item.goodId); if(!good) return null; const isSel=selectedFree===item.id; return (
@@ -1390,7 +1444,7 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
   const isActive = (mat) => {
     if (mat.type==="bg")    return altar.bgMaterialId===mat.id;
     if (mat.type==="frame") return altar.frameMaterialId===mat.id;
-    if (mat.type==="deco")  return altar.decoIds?.includes(mat.id);
+    if (mat.type==="deco")  return (altar.decoItems||[]).some(d=>d.materialId===mat.id);
     if (mat.type==="light") return altar.lightId===mat.id;
   };
   const toggle = (mat) => {
@@ -1400,8 +1454,14 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
     if (mat.type==="frame") onUpdateAltar({frameMaterialId: altar.frameMaterialId===mat.id?null:mat.id});
     if (mat.type==="light") onUpdateAltar({lightId:         altar.lightId===mat.id?null:mat.id});
     if (mat.type==="deco")  {
-      const cur = altar.decoIds||[];
-      onUpdateAltar({decoIds: cur.includes(mat.id)?cur.filter(id=>id!==mat.id):[...cur,mat.id]});
+      const cur = altar.decoItems||[];
+      const exists = cur.find(d=>d.materialId===mat.id);
+      if (exists) {
+        onUpdateAltar({decoItems: cur.filter(d=>d.materialId!==mat.id)});
+      } else {
+        // Add new deco at center of altar
+        onUpdateAltar({decoItems:[...cur,{id:newUid(),materialId:mat.id,x:200+Math.random()*200,y:120+Math.random()*100,scale:1.5,zIndex:(cur.length+1)*10}]});
+      }
     }
   };
   const applyCustomColor = (hex) => {
@@ -1504,6 +1564,7 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
                 {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#c084fc",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
                 {mat.tier==="free"&&<div style={{ position:"absolute",top:5,left:5,fontSize:8,background:"rgba(34,197,94,0.2)",color:"#22c55e",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>静止・FREE</div>}
         {mat.tier==="paid"&&mat.animated&&unlocked&&<div style={{ position:"absolute",top:5,left:5,fontSize:8,background:"rgba(192,132,252,0.2)",color:"#c084fc",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>🎬 アニメ</div>}
+        {mat.type==="deco"&&active&&(()=>{ const cnt=(altar.decoItems||[]).filter(d=>d.materialId===mat.id).length; return cnt>0?<div style={{ position:"absolute",bottom:5,right:5,fontSize:9,background:"rgba(232,121,249,0.3)",color:"#e879f9",borderRadius:6,padding:"1px 5px",fontWeight:700 }}>×{cnt}</div>:null; })()}
                 {mat.tier==="paid"&&!unlocked&&!isPremium&&<div style={{ position:"absolute",top:5,left:5,fontSize:8,background:"rgba(192,132,252,0.2)",color:"#c084fc",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>¥{mat.price}</div>}
                 {owned&&!isPremium&&<div style={{ position:"absolute",top:5,left:5,fontSize:8,background:"rgba(96,165,250,0.2)",color:"#60a5fa",borderRadius:6,padding:"1px 4px",fontWeight:700 }}>購入済</div>}
                 <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>
@@ -1519,7 +1580,15 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
           })}
         </div>
 
-        <div style={{ marginTop:12,fontSize:10,color:"#4b5563",textAlign:"center" }}>
+        {tab==="deco"&&(altar.decoItems||[]).length>0&&(
+          <div style={{ marginTop:8,display:"flex",justifyContent:"flex-end" }}>
+            <button onClick={()=>onUpdateAltar({decoItems:[]})} style={{ fontSize:11,color:"#ef4444",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer" }}>🗑 全デコを削除</button>
+          </div>
+        )}
+        <div style={{ marginTop:8,padding:"8px 12px",background:"rgba(192,132,252,0.06)",border:"1px solid rgba(192,132,252,0.15)",borderRadius:10,fontSize:11,color:"#a5b4fc",lineHeight:1.6 }}>
+          🎀 <strong style={{ color:"#c084fc" }}>デコの使い方</strong>：タップで祭壇に追加 → ドラッグで移動 → タップして選択でサイズ変更・削除
+        </div>
+        <div style={{ marginTop:8,fontSize:10,color:"#4b5563",textAlign:"center" }}>
           ※ 個別購入は永久使用可能 · プレミアムは月額で全素材使い放題
         </div>
       </div>
@@ -1568,73 +1637,246 @@ function AltarManagerModal({ altars, activeId, isPro, onAdd, onDelete, onRename,
 
 // ─── Upgrade Modal ────────────────────────────────────────────
 function UpgradeModal({ onUpgrade, onUpgradePremium, onClose, plan }) {
+  const [step, setStep]           = useState("plan");   // "plan" | "payment"
+  const [selectedPlan, setSelectedPlan] = useState(null); // "pro" | "premium"
+  const [payMethod, setPayMethod] = useState("card");   // "card" | "apple" | "google"
+  const [billing, setBilling]     = useState("monthly"); // "monthly" | "yearly"
+  const [cardNum, setCardNum]     = useState("");
+  const [cardExp, setCardExp]     = useState("");
+  const [cardCvc, setCardCvc]     = useState("");
+  const [cardName, setCardName]   = useState("");
+  const [processing, setProcessing] = useState(false);
+
   const FEATURES = [
     { icon:"⛩", label:"祭壇を無制限に作れる",    free:"1つまで", pro:"無制限",  premium:"無制限" },
     { icon:"🎭", label:"キャラ別フォルダ管理",     free:"✗",       pro:"✓",       premium:"✓" },
     { icon:"🌌", label:"背景アニメーション",        free:"✗",       pro:"✗",       premium:"✓" },
-    { icon:"🎨", label:"素材（デコ・フレーム等）", free:"無料のみ", pro:"無料のみ", premium:"全部使い放題" },
+    { icon:"🎨", label:"素材使い放題",             free:"無料のみ", pro:"無料のみ", premium:"✓" },
     { icon:"📸", label:"シェア画像・URL",          free:"✓",       pro:"✓",       premium:"✓" },
     { icon:"🔖", label:"EC連携・認証バッジ",       free:"✗",       pro:"✓",       premium:"✓" },
   ];
+
+  const PLANS = {
+    pro:     { name:"PRO",     color:"#f59e0b", monthlyPrice:298,  yearlyPrice:2980,  studentMonthly:198, studentYearly:1980  },
+    premium: { name:"PREMIUM", color:"#c084fc", monthlyPrice:498,  yearlyPrice:4980,  studentMonthly:348, studentYearly:3480  },
+  };
+
+  const planData = selectedPlan ? PLANS[selectedPlan] : null;
+  const displayPrice = planData ? (billing==="monthly" ? planData.monthlyPrice : planData.yearlyPrice) : 0;
+  const billingLabel = billing==="monthly" ? "/ 月" : "/ 年";
+
+  // Format card number with spaces
+  const formatCardNum = (val) => val.replace(/\D/g,"").slice(0,16).replace(/(.{4})/g,"$1 ").trim();
+  const formatExp     = (val) => { const v=val.replace(/\D/g,"").slice(0,4); return v.length>2?v.slice(0,2)+"/"+v.slice(2):v; };
+
+  const handleProceed = (p) => { setSelectedPlan(p); setStep("payment"); };
+
+  const handleSubmit = () => {
+    setProcessing(true);
+    setTimeout(() => {
+      setProcessing(false);
+      if (selectedPlan==="pro") onUpgrade();
+      else onUpgradePremium();
+    }, 1800);
+  };
+
+  const canSubmit = payMethod==="card"
+    ? cardNum.replace(/\s/g,"").length===16 && cardExp.length===5 && cardCvc.length>=3 && cardName.trim()
+    : true;
+
   return (
     <div style={S.overlay} onClick={onClose}>
-      <div style={{ ...S.modal,maxWidth:460 }} onClick={e=>e.stopPropagation()}>
-        <div style={{ textAlign:"center",marginBottom:16 }}>
-          <div style={{ fontSize:34,marginBottom:6 }}>👑</div>
-          <div style={{ fontSize:20,fontWeight:900,background:"linear-gradient(90deg,#f59e0b,#e879f9,#c084fc)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>SAIDAN プランを選ぶ</div>
-          <div style={{ fontSize:12,color:"#7c6a9a",marginTop:3 }}>推し活に、お金の壁を作らない。</div>
+      <div style={{ ...S.modal, maxWidth:460 }} onClick={e=>e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            {step==="payment" && (
+              <button onClick={()=>setStep("plan")} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:16,cursor:"pointer",padding:"0 4px" }}>←</button>
+            )}
+            <div style={{ fontSize:17,fontWeight:800,background:"linear-gradient(90deg,#f59e0b,#e879f9,#c084fc)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>
+              {step==="plan" ? "SAIDANプランを選ぶ" : `${planData?.name} にアップグレード`}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
 
-        {/* 3-column price cards */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16 }}>
-          {/* Free */}
-          <div style={{ textAlign:"center",padding:"12px 6px",background:"rgba(255,255,255,0.03)",borderRadius:12,border:`2px solid ${plan==="free"?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.08)"}` }}>
-            <div style={{ fontSize:10,color:"#9ca3af",marginBottom:3,fontWeight:600 }}>FREE</div>
-            <div style={{ fontSize:22,fontWeight:900,color:"#9ca3af" }}>¥0</div>
-            <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>ずっと無料</div>
+        <div style={{ fontSize:12,color:"#7c6a9a",textAlign:"center",marginBottom:14 }}>推し活に、お金の壁を作らない。</div>
+
+        {/* ── Step 1: Plan selection ── */}
+        {step==="plan" && (<>
+          {/* Billing toggle */}
+          <div style={{ display:"flex",background:"rgba(255,255,255,0.05)",borderRadius:20,padding:3,marginBottom:16,border:"1px solid rgba(255,255,255,0.08)" }}>
+            {[["monthly","月払い"],["yearly","年払い（お得）"]].map(([b,l])=>(
+              <button key={b} onClick={()=>setBilling(b)} style={{ flex:1,padding:"6px",borderRadius:17,border:"none",background:billing===b?"rgba(232,121,249,0.25)":"transparent",color:billing===b?"#e879f9":"#6b7280",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.15s" }}>
+                {l}{b==="yearly"&&<span style={{ fontSize:9,color:"#4ade80",marginLeft:4 }}>2ヶ月分お得</span>}
+              </button>
+            ))}
           </div>
-          {/* PRO */}
-          <div style={{ textAlign:"center",padding:"12px 6px",background:"rgba(245,158,11,0.08)",borderRadius:12,border:`2px solid ${plan==="pro"?"#f59e0b":"rgba(245,158,11,0.25)"}`,position:"relative" }}>
-            {plan==="pro"&&<div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:9,background:"#f59e0b",color:"#000",borderRadius:10,padding:"1px 8px",fontWeight:800,whiteSpace:"nowrap" }}>現在のプラン</div>}
-            <div style={{ fontSize:10,color:"#f59e0b",marginBottom:3,fontWeight:700 }}>PRO</div>
-            <div><span style={{ fontSize:22,fontWeight:900,color:"#f59e0b" }}>¥298</span></div>
-            <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>学割 ¥198</div>
-            <div style={{ fontSize:9,color:"#6b7280" }}>年払 ¥2,980</div>
-          </div>
-          {/* Premium */}
-          <div style={{ textAlign:"center",padding:"12px 6px",background:"linear-gradient(135deg,rgba(192,132,252,0.12),rgba(232,121,249,0.08))",borderRadius:12,border:`2px solid ${plan==="premium"?"#c084fc":"rgba(192,132,252,0.3)"}`,position:"relative" }}>
-            {plan==="premium"&&<div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:9,background:"#c084fc",color:"#fff",borderRadius:10,padding:"1px 8px",fontWeight:800,whiteSpace:"nowrap" }}>現在のプラン</div>}
-            <div style={{ fontSize:10,color:"#c084fc",marginBottom:3,fontWeight:700 }}>✨ PREMIUM</div>
-            <div><span style={{ fontSize:22,fontWeight:900,color:"#c084fc" }}>¥498</span></div>
-            <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>学割 ¥348</div>
-            <div style={{ fontSize:9,color:"#6b7280" }}>年払 ¥4,980</div>
-          </div>
-        </div>
-        <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",marginBottom:14 }}>学割は大学メールアドレス（ac.jp）で認証予定 · Stripe導入時に実装</div>
-        {/* Feature table */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ display:"flex",padding:"4px 0 8px",borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
-            <span style={{ flex:1,fontSize:10,color:"#6b7280" }}></span>
-            <span style={{ fontSize:10,color:"#9ca3af",width:52,textAlign:"center",fontWeight:600 }}>FREE</span>
-            <span style={{ fontSize:10,color:"#f59e0b",width:60,textAlign:"center",fontWeight:700 }}>PRO</span>
-            <span style={{ fontSize:10,color:"#c084fc",width:70,textAlign:"center",fontWeight:700 }}>PREMIUM</span>
-          </div>
-          {FEATURES.map(f=>(
-            <div key={f.label} style={{ display:"flex",alignItems:"center",gap:6,padding:"7px 0",borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-              <span style={{ fontSize:14,width:20,textAlign:"center" }}>{f.icon}</span>
-              <span style={{ flex:1,fontSize:11,color:"#d1d5db" }}>{f.label}</span>
-              <span style={{ fontSize:10,color:"#6b7280",width:52,textAlign:"center" }}>{f.free}</span>
-              <span style={{ fontSize:10,color:"#4ade80",fontWeight:700,width:60,textAlign:"center" }}>{f.pro}</span>
-              <span style={{ fontSize:10,color:"#c084fc",fontWeight:700,width:70,textAlign:"center" }}>{f.premium}</span>
+
+          {/* Plan cards */}
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14 }}>
+            {/* Free */}
+            <div style={{ textAlign:"center",padding:"12px 6px",background:"rgba(255,255,255,0.03)",borderRadius:12,border:`2px solid ${plan==="free"?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.07)"}` }}>
+              <div style={{ fontSize:10,color:"#9ca3af",marginBottom:3,fontWeight:600 }}>FREE</div>
+              <div style={{ fontSize:20,fontWeight:900,color:"#9ca3af" }}>¥0</div>
+              <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>ずっと無料</div>
+              {plan==="free" && <div style={{ fontSize:9,color:"#9ca3af",marginTop:6,background:"rgba(255,255,255,0.08)",borderRadius:8,padding:"2px 0" }}>現在のプラン</div>}
             </div>
-          ))}
-        </div>
-        <div style={{ display:"flex",gap:8,marginBottom:10 }}>
-          {plan!=="pro"&&plan!=="premium"&&<button onClick={onUpgrade} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer" }}>👑 PRO（¥298）</button>}
-          {plan!=="premium"&&<button onClick={onUpgradePremium} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#c084fc,#e879f9)",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer" }}>✨ PREMIUM（¥498）</button>}
-          {plan==="premium"&&<div style={{ flex:1,padding:"11px",borderRadius:12,background:"rgba(192,132,252,0.1)",border:"1px solid rgba(192,132,252,0.3)",color:"#c084fc",fontSize:13,fontWeight:700,textAlign:"center" }}>✨ プレミアム会員です</div>}
-        </div>
-        <div style={{ fontSize:10,color:"#4b5563",textAlign:"center" }}>※ デモです。実際の課金は発生しません。本サービスではStripe等と連携予定。</div>
+            {/* PRO */}
+            <div style={{ textAlign:"center",padding:"12px 6px",background:"rgba(245,158,11,0.08)",borderRadius:12,border:`2px solid ${plan==="pro"?"#f59e0b":"rgba(245,158,11,0.2)"}`,position:"relative",cursor:plan==="pro"?"default":"pointer",transition:"transform 0.15s" }}
+              onClick={()=>plan!=="pro"&&plan!=="premium"&&handleProceed("pro")}
+              onMouseEnter={e=>plan!=="pro"&&plan!=="premium"&&(e.currentTarget.style.transform="scale(1.03)")}
+              onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+              {plan==="pro"&&<div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:9,background:"#f59e0b",color:"#000",borderRadius:10,padding:"1px 8px",fontWeight:800,whiteSpace:"nowrap" }}>現在のプラン</div>}
+              <div style={{ fontSize:10,color:"#f59e0b",marginBottom:3,fontWeight:700 }}>👑 PRO</div>
+              <div><span style={{ fontSize:20,fontWeight:900,color:"#f59e0b" }}>¥{billing==="monthly"?298:2980}</span></div>
+              <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>{billingLabel}</div>
+              <div style={{ fontSize:9,color:"#f59e0b",marginTop:2 }}>学割 ¥{billing==="monthly"?198:1980}</div>
+              {plan!=="pro"&&plan!=="premium"&&<div style={{ marginTop:6,fontSize:10,color:"#fff",background:"#f59e0b",borderRadius:8,padding:"3px 0",fontWeight:700 }}>選択 →</div>}
+            </div>
+            {/* Premium */}
+            <div style={{ textAlign:"center",padding:"12px 6px",background:"linear-gradient(135deg,rgba(192,132,252,0.12),rgba(232,121,249,0.08))",borderRadius:12,border:`2px solid ${plan==="premium"?"#c084fc":"rgba(192,132,252,0.25)"}`,position:"relative",cursor:plan==="premium"?"default":"pointer",transition:"transform 0.15s" }}
+              onClick={()=>plan!=="premium"&&handleProceed("premium")}
+              onMouseEnter={e=>plan!=="premium"&&(e.currentTarget.style.transform="scale(1.03)")}
+              onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+              {plan==="premium"&&<div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:9,background:"#c084fc",color:"#fff",borderRadius:10,padding:"1px 8px",fontWeight:800,whiteSpace:"nowrap" }}>現在のプラン</div>}
+              <div style={{ fontSize:10,color:"#c084fc",marginBottom:3,fontWeight:700 }}>✨ PREMIUM</div>
+              <div><span style={{ fontSize:20,fontWeight:900,color:"#c084fc" }}>¥{billing==="monthly"?498:4980}</span></div>
+              <div style={{ fontSize:9,color:"#6b7280",marginTop:2 }}>{billingLabel}</div>
+              <div style={{ fontSize:9,color:"#c084fc",marginTop:2 }}>学割 ¥{billing==="monthly"?348:3480}</div>
+              {plan!=="premium"&&<div style={{ marginTop:6,fontSize:10,color:"#fff",background:"linear-gradient(135deg,#c084fc,#e879f9)",borderRadius:8,padding:"3px 0",fontWeight:700 }}>選択 →</div>}
+            </div>
+          </div>
+
+          <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",marginBottom:12 }}>学割は大学メールアドレス（ac.jp）で認証予定 · Stripe導入時に実装</div>
+
+          {/* Feature table */}
+          <div style={{ marginBottom:8 }}>
+            <div style={{ display:"flex",padding:"4px 0 8px",borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+              <span style={{ flex:1,fontSize:10,color:"#6b7280" }}></span>
+              <span style={{ fontSize:10,color:"#9ca3af",width:52,textAlign:"center",fontWeight:600 }}>FREE</span>
+              <span style={{ fontSize:10,color:"#f59e0b",width:60,textAlign:"center",fontWeight:700 }}>PRO</span>
+              <span style={{ fontSize:10,color:"#c084fc",width:70,textAlign:"center",fontWeight:700 }}>PREMIUM</span>
+            </div>
+            {FEATURES.map(f=>(
+              <div key={f.label} style={{ display:"flex",alignItems:"center",gap:6,padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontSize:13,width:20,textAlign:"center" }}>{f.icon}</span>
+                <span style={{ flex:1,fontSize:11,color:"#d1d5db" }}>{f.label}</span>
+                <span style={{ fontSize:10,color:"#6b7280",width:52,textAlign:"center" }}>{f.free}</span>
+                <span style={{ fontSize:10,color:"#4ade80",fontWeight:700,width:60,textAlign:"center" }}>{f.pro}</span>
+                <span style={{ fontSize:10,color:"#c084fc",fontWeight:700,width:70,textAlign:"center" }}>{f.premium}</span>
+              </div>
+            ))}
+          </div>
+        </>)}
+
+        {/* ── Step 2: Payment ── */}
+        {step==="payment" && planData && (<>
+          {/* Order summary */}
+          <div style={{ background:`${planData.color}10`,border:`1px solid ${planData.color}33`,borderRadius:12,padding:"12px 14px",marginBottom:16 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+              <div>
+                <div style={{ fontSize:13,fontWeight:800,color:planData.color }}>{planData.name}プラン</div>
+                <div style={{ fontSize:11,color:"#9ca3af",marginTop:2 }}>{billing==="monthly"?"月払い":"年払い（2ヶ月分お得）"}</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:22,fontWeight:900,color:planData.color }}>¥{displayPrice}</div>
+                <div style={{ fontSize:10,color:"#6b7280" }}>{billingLabel}（税込）</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment method selector */}
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11,color:"#7c6a9a",fontWeight:700,marginBottom:8 }}>お支払い方法</div>
+            <div style={{ display:"flex",gap:8 }}>
+              {[
+                { id:"card",   icon:"💳", label:"クレジットカード" },
+                { id:"apple",  icon:"",   label:"Apple Pay",  logo:true },
+                { id:"google", icon:"",   label:"Google Pay", logo:true },
+              ].map(pm=>(
+                <button key={pm.id} onClick={()=>setPayMethod(pm.id)} style={{ flex:1,padding:"10px 6px",borderRadius:12,border:`2px solid ${payMethod===pm.id?"rgba(232,121,249,0.6)":"rgba(255,255,255,0.1)"}`,background:payMethod===pm.id?"rgba(232,121,249,0.12)":"rgba(255,255,255,0.03)",cursor:"pointer",textAlign:"center",transition:"all 0.15s" }}>
+                  {pm.id==="apple" ? (
+                    <div style={{ fontSize:11,fontWeight:800,color:payMethod===pm.id?"#e879f9":"#9ca3af",letterSpacing:"-0.5px" }}> Apple Pay</div>
+                  ) : pm.id==="google" ? (
+                    <div style={{ fontSize:11,fontWeight:800,color:payMethod===pm.id?"#e879f9":"#9ca3af" }}>G Pay</div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize:18 }}>{pm.icon}</div>
+                      <div style={{ fontSize:10,color:payMethod===pm.id?"#e879f9":"#9ca3af",marginTop:2,fontWeight:600 }}>{pm.label}</div>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Card form */}
+          {payMethod==="card" && (
+            <div style={{ marginBottom:14 }}>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>カード番号</label>
+                <div style={{ position:"relative" }}>
+                  <input value={cardNum} onChange={e=>setCardNum(formatCardNum(e.target.value))}
+                    placeholder="1234 5678 9012 3456" style={{ ...S.input,paddingRight:60,fontFamily:"monospace",letterSpacing:1 }} maxLength={19}/>
+                  <div style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",display:"flex",gap:3 }}>
+                    {["VISA","MC"].map(b=><span key={b} style={{ fontSize:8,fontWeight:800,color:"#6b7280",background:"rgba(255,255,255,0.08)",padding:"1px 4px",borderRadius:3 }}>{b}</span>)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>有効期限</label>
+                  <input value={cardExp} onChange={e=>setCardExp(formatExp(e.target.value))}
+                    placeholder="MM/YY" style={{ ...S.input,fontFamily:"monospace" }} maxLength={5}/>
+                </div>
+                <div style={S.fieldGroup}>
+                  <label style={S.label}>セキュリティコード</label>
+                  <input value={cardCvc} onChange={e=>setCardCvc(e.target.value.replace(/\D/g,"").slice(0,4))}
+                    placeholder="CVC" style={{ ...S.input,fontFamily:"monospace" }} maxLength={4}/>
+                </div>
+              </div>
+              <div style={S.fieldGroup}>
+                <label style={S.label}>カード名義（ローマ字）</label>
+                <input value={cardName} onChange={e=>setCardName(e.target.value.toUpperCase())}
+                  placeholder="TARO YAMADA" style={{ ...S.input,fontFamily:"monospace",letterSpacing:1 }} maxLength={30}/>
+              </div>
+              {/* Stripe badge */}
+              <div style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 10px",background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:8 }}>
+                <span style={{ fontSize:16 }}>🔒</span>
+                <span style={{ fontSize:10,color:"#9ca3af",lineHeight:1.5 }}>
+                  カード情報はStripeの暗号化サーバーで安全に処理されます。SAIDANはカード番号を保存しません。
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Apple / Google Pay */}
+          {(payMethod==="apple"||payMethod==="google") && (
+            <div style={{ textAlign:"center",padding:"20px 0",marginBottom:14 }}>
+              <div style={{ fontSize:36,marginBottom:8 }}>{payMethod==="apple"?"":"G"}</div>
+              <div style={{ fontSize:13,color:"#d1d5db",marginBottom:4 }}>
+                {payMethod==="apple"?"Apple Pay":"Google Pay"}で支払う
+              </div>
+              <div style={{ fontSize:11,color:"#6b7280" }}>
+                デバイスの認証（Face ID / Touch ID）で支払いが完了します
+              </div>
+            </div>
+          )}
+
+          {/* Submit */}
+          <button onClick={handleSubmit} disabled={!canSubmit||processing}
+            style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:canSubmit&&!processing?`linear-gradient(135deg,${planData.color},#e879f9)`:"rgba(255,255,255,0.08)",color:canSubmit&&!processing?"#fff":"#4b5563",fontSize:14,fontWeight:800,cursor:canSubmit&&!processing?"pointer":"default",transition:"all 0.2s",marginBottom:10 }}>
+            {processing ? "処理中…" : `¥${displayPrice}${billingLabel} で始める`}
+          </button>
+
+          <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",lineHeight:1.7 }}>
+            ※ これはデモUIです。実際の課金は発生しません。<br/>
+            本サービス実装時はStripeと連携予定です。<br/>
+            いつでもキャンセル可能 · 解約後も期間終了まで利用できます
+          </div>
+        </>)}
       </div>
     </div>
   );
@@ -1897,10 +2139,16 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
 
         {/* Upload */}
         {imgMode==="upload" && (
-          <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:110,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",marginBottom:14,color:"#7c6a9a",overflow:"hidden" }} onClick={()=>fileRef.current?.click()}>
-            {image?<img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>:<><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>}
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display:"none" }}/>
-          </div>
+          <>
+            <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:110,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",marginBottom:8,color:"#7c6a9a",overflow:"hidden" }} onClick={()=>fileRef.current?.click()}>
+              {image?<img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>:<><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>}
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display:"none" }}/>
+            </div>
+            <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:10,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#a5b4fc",lineHeight:1.7 }}>
+              💡 <strong style={{ color:"#c7d2fe" }}>素材をお探しですか？</strong><br/>
+              <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO（sozaino.site）</a> はVTuber向けフリー素材サイトです。商用利用可・登録不要でダウンロードして、こちらにアップロードして使えます。
+            </div>
+          </>
         )}
 
         {/* Official URL */}
@@ -1959,6 +2207,65 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
         <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer" }}>追加する</button>
       </div>
     </div>
+  );
+}
+
+// ─── Deco Layer ──────────────────────────────────────────────
+// Renders deco stickers on top of altar (both shelf and free modes)
+function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDeco, onStartDrag, onSelect, onScale, onRemove }) {
+  if (!decoItems?.length) return null;
+  const DECO_ANIMS = {
+    dc_ribbon: "decoRibbon 1.5s ease-in-out infinite alternate",
+    dc_light:  "decoLight 1.2s ease-in-out infinite alternate",
+    dc_music:  "decoMusic 1s ease-in-out infinite alternate",
+    dc_fire2:  "decoFire 0.8s ease-in-out infinite alternate",
+  };
+  return (
+    <>
+      <style>{`
+        @keyframes decoRibbon { from{transform:rotate(-8deg)} to{transform:rotate(8deg)} }
+        @keyframes decoLight  { from{opacity:0.7;transform:scale(0.9)} to{opacity:1;transform:scale(1.1)} }
+        @keyframes decoMusic  { from{transform:translateY(0) rotate(-5deg)} to{transform:translateY(-6px) rotate(5deg)} }
+        @keyframes decoFire   { from{transform:scaleY(1) scaleX(1)} to{transform:scaleY(1.2) scaleX(0.9)} }
+      `}</style>
+      {decoItems.map(item=>{
+        const mat = MATERIALS.find(m=>m.id===item.materialId);
+        if (!mat) return null;
+        const isSel = selectedDeco===item.id;
+        const isDragging = draggingDeco===item.id;
+        const anim = mat.animated ? DECO_ANIMS[mat.id] : undefined;
+        return (
+          <div key={item.id}
+            onMouseDown={e=>{ if(viewingShared) return; e.stopPropagation(); onSelect(item.id); onStartDrag(e,item.id); }}
+            onTouchStart={e=>{ if(viewingShared) return; e.stopPropagation(); onSelect(item.id); onStartDrag(e,item.id); }}
+            onClick={e=>{ e.stopPropagation(); onSelect(item.id); }}
+            style={{
+              position:"absolute",
+              left:item.x, top:item.y,
+              transform:`translate(-50%,-50%) scale(${item.scale||1})`,
+              zIndex:(item.zIndex||50)+200,
+              cursor:isDragging?"grabbing":viewingShared?"default":"grab",
+              fontSize:36,
+              lineHeight:1,
+              animation:anim,
+              filter:isSel?"drop-shadow(0 0 8px rgba(232,121,249,0.9))":"drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
+              transition:isDragging?"none":"filter 0.2s",
+              userSelect:"none",
+            }}>
+            {mat.emoji}
+            {/* Controls */}
+            {isSel && !viewingShared && (
+              <div style={{ position:"absolute",top:-34,left:"50%",transform:"translateX(-50%)",display:"flex",gap:4,background:isDark?"rgba(10,5,20,0.95)":"rgba(255,255,255,0.95)",borderRadius:20,padding:"4px 8px",border:"1px solid rgba(232,121,249,0.3)",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",whiteSpace:"nowrap" }}>
+                {[{l:"−",a:()=>onScale(item.id,-0.2)},{l:"+",a:()=>onScale(item.id,+0.2)},{l:"🗑",a:()=>onRemove(item.id)}].map(b=>(
+                  <button key={b.l} onMouseDown={e=>{e.stopPropagation();b.a();}}
+                    style={{ width:22,height:22,border:"none",borderRadius:"50%",background:b.l==="🗑"?"rgba(239,68,68,0.2)":"rgba(232,121,249,0.2)",color:b.l==="🗑"?"#ef4444":"#e879f9",fontSize:11,cursor:"pointer",fontWeight:900,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>{b.l}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
