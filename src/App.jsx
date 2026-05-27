@@ -61,6 +61,41 @@ const MATERIALS = [
   { id:"lt_aurora2",type:"light", name:"オーロラ光", emoji:"🌌", price:150, tier:"paid", animated:true,  desc:"幻想的な光の揺らぎ" },
 ];
 
+// ── Flower catalog (for bouquet builder) ─────────────────────
+const FLOWERS = [
+  // 無料
+  { id:"fl_rose",      name:"バラ",       emoji:"🌹", color:"#e11d48", free:true,  desc:"定番の赤バラ"     },
+  { id:"fl_pink_rose", name:"ピンクバラ", emoji:"🌸", color:"#f472b6", free:true,  desc:"やわらかピンク"   },
+  { id:"fl_tulip",     name:"チューリップ",emoji:"🌷", color:"#f43f5e", free:true,  desc:"春の定番"         },
+  { id:"fl_daisy",     name:"デイジー",   emoji:"🌼", color:"#fbbf24", free:true,  desc:"かわいい小花"     },
+  { id:"fl_sunflower", name:"ひまわり",   emoji:"🌻", color:"#f59e0b", free:true,  desc:"元気な黄色"       },
+  { id:"fl_cherry",    name:"桜",         emoji:"🌸", color:"#fda4af", free:true,  desc:"春の桜"           },
+  // 有料（PRO or 個別購入）
+  { id:"fl_lily",      name:"ユリ",       emoji:"🌺", color:"#c026d3", free:false, desc:"気品ある白ユリ",  price:120 },
+  { id:"fl_lavender",  name:"ラベンダー", emoji:"💜", color:"#a855f7", free:false, desc:"癒しの紫",        price:120 },
+  { id:"fl_carnation", name:"カーネーション",emoji:"💐",color:"#f9a8d4",free:false,desc:"感謝を込めて",    price:120 },
+  { id:"fl_cosmos",    name:"コスモス",   emoji:"🌸", color:"#f0abfc", free:false, desc:"秋桜のやさしさ",  price:120 },
+  { id:"fl_orchid",    name:"胡蝶蘭",    emoji:"🌺", color:"#e879f9", free:false, desc:"高貴な白",        price:150 },
+  { id:"fl_babysbreath",name:"かすみ草",  emoji:"🤍", color:"#f1f5f9", free:false, desc:"花束を引き立てる",price:100 },
+];
+
+const RIBBON_COLORS = [
+  { id:"rb_pink",   name:"ピンク",   color:"#f472b6" },
+  { id:"rb_white",  name:"ホワイト", color:"#f8fafc" },
+  { id:"rb_purple", name:"パープル", color:"#a855f7" },
+  { id:"rb_red",    name:"レッド",   color:"#e11d48" },
+  { id:"rb_gold",   name:"ゴールド", color:"#f59e0b" },
+  { id:"rb_blue",   name:"ブルー",   color:"#60a5fa" },
+  { id:"rb_green",  name:"グリーン", color:"#4ade80" },
+  { id:"rb_black",  name:"ブラック", color:"#1e293b" },
+];
+
+const WRAP_STYLES = [
+  { id:"wrap_round",   name:"丸ブーケ",   desc:"定番の丸い束"   },
+  { id:"wrap_cascade", name:"カスケード", desc:"流れるように垂れ下がる" },
+  { id:"wrap_posy",    name:"ポージー",   desc:"小ぶりでコンパクト" },
+];
+
 // グッズ種類マスタ（無料プランでも絞り込み可能）
 const GOOD_TYPES = [
   { id:"acrylic",  label:"アクスタ",   emoji:"🖼️" },
@@ -154,7 +189,9 @@ export default function App() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [showMaterials, setShowMaterials] = useState(false);
+  const [showMaterials, setShowMaterials]   = useState(false);
+  const [showBouquet, setShowBouquet]       = useState(false);
+  const [bouquets, setBouquets]             = useState([]); // saved bouquets
   const [showRandomSets, setShowRandomSets] = useState(false);
   const [showAltarManager, setShowAltarManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
@@ -180,6 +217,7 @@ export default function App() {
           if (d.characters) setCharacters(d.characters);
           if (d.purchasedMaterials) setPurchasedMaterials(d.purchasedMaterials);
           if (d.randomSets) setRandomSets(d.randomSets);
+          if (d.bouquets)   setBouquets(d.bouquets);
         } else {
           const a = makeAltar(); setAltars([a]); setActiveAltarId(a.id);
         }
@@ -189,19 +227,19 @@ export default function App() {
   },[]);
 
   // ── Auto-save ─────────────────────────────────────────────
-  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets)=>{
+  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets)=>{
     if (!loaded) return;
     setSaveStatus("saving");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async()=>{
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets}));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets}));
         setSaveStatus("saved"); setTimeout(()=>setSaveStatus(null),2000);
       } catch { setSaveStatus("error"); setTimeout(()=>setSaveStatus(null),3000); }
     },700);
   },[loaded]);
 
-  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,loaded]);
+  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,loaded]);
 
   const showToast = (msg)=>{ setToast(msg); setTimeout(()=>setToast(null),2200); };
 
@@ -242,6 +280,16 @@ export default function App() {
   // ── Characters CRUD (PRO) ──────────────────────────────────
   const addCharacter    = (c)=>{ setCharacters(prev=>[...prev,c]); showToast("キャラクターを追加しました ✓"); };
   const deleteCharacter = (id)=>{ setCharacters(prev=>prev.filter(c=>c.id!==id)); setGoods(prev=>prev.map(g=>g.characterId===id?{...g,characterId:null}:g)); };
+
+  // ── Bouquets CRUD ──────────────────────────────────────────
+  const saveBouquet = (b) => { setBouquets(prev=>[b,...prev]); showToast("花束を保存しました 💐"); };
+  const deleteBouquet = (id) => setBouquets(prev=>prev.filter(b=>b.id!==id));
+  const placeBouquetOnAltar = (b) => {
+    // Place bouquet as a decoItem on current altar
+    const cur = (currentAltar.decoItems||[]);
+    updateAltar(currentAltar.id, { decoItems:[...cur,{ id:newUid(), materialId:"bouquet", bouquetData:b, x:200+Math.random()*150, y:150+Math.random()*80, scale:1.2, zIndex:(cur.length+1)*10 }] });
+    showToast("花束を祭壇に配置しました 💐");
+  };
 
   // ── RandomSets CRUD ────────────────────────────────────────
   const addRandomSet    = (s)=>{ setRandomSets(prev=>[s,...prev]); showToast("ランダムセットを追加しました ✓"); };
@@ -302,14 +350,16 @@ export default function App() {
             {isPro?"👑 PRO":"FREE"}
           </button>
           <nav style={{ display:"flex", gap:6 }}>
-            {[["collection","📦 コレクション"],["random","🎰 ガチャ管理"],["altar","⛩ 祭壇"]].map(([p,l])=>(
+            {[["collection","📦 コレクション"],["random","🎰 ガチャ管理"],["altar","⛩ 祭壇"],["bouquet","💐 花束"]].map(([p,l])=>(
               <button key={p} onClick={()=>setPage(p)} style={{ ...S.navBtn, ...(page===p?S.navBtnOn:{}) }}>{l}</button>
             ))}
           </nav>
         </div>
       </header>
 
-      {page==="random"
+      {page==="bouquet"
+        ? <BouquetPage bouquets={bouquets} isPro={isPro} purchasedMaterials={purchasedMaterials} onSave={saveBouquet} onDelete={deleteBouquet} onPlace={placeBouquetOnAltar} onGoAltar={()=>setPage("altar")} />
+        : page==="random"
         ? <RandomSetsPage randomSets={randomSets} isPro={isPro} onAdd={addRandomSet} onUpdate={updateRandomSet} onDelete={deleteRandomSet} onAddDrawLog={addDrawLog} />
         : page==="collection"
         ? <CollectionPage goods={goods} counts={counts} characters={characters} isPro={isPro}
@@ -368,6 +418,251 @@ export default function App() {
       {showAltarManager && <AltarManagerModal altars={altars} activeId={activeAltar?.id} isPro={isPro}
         onAdd={addAltar} onDelete={deleteAltar} onRename={renameAltar} onSwitch={(id)=>{setActiveAltarId(id);setShowAltarManager(false);}}
         onUpgrade={()=>{ setShowAltarManager(false); setShowUpgrade(true); }} onClose={()=>setShowAltarManager(false)} />}
+    </div>
+  );
+}
+
+// ─── Bouquet Page ────────────────────────────────────────────
+function BouquetPage({ bouquets, isPro, purchasedMaterials, onSave, onDelete, onPlace, onGoAltar }) {
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [previewBouquet, setPreviewBouquet] = useState(null);
+
+  return (
+    <main style={S.main}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+        <div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#f0e8ff" }}>💐 花束メーカー</div>
+          <div style={{ fontSize:12,color:"#7c6a9a",marginTop:2 }}>花を選んで花束を作り、祭壇に飾ろう</div>
+        </div>
+        <button onClick={()=>setShowBuilder(true)} style={S.addBtn}>＋ 花束を作る</button>
+      </div>
+
+      {bouquets.length===0 ? (
+        <div style={S.emptyState}>
+          <div style={{ fontSize:52,marginBottom:10 }}>💐</div>
+          <div style={{ fontSize:15,fontWeight:700,marginBottom:6 }}>まだ花束がありません</div>
+          <div style={{ fontSize:12,opacity:0.5,marginBottom:16 }}>「＋ 花束を作る」から好きな花を選んで作ってみよう</div>
+          <button onClick={()=>setShowBuilder(true)} style={S.addBtn}>花束を作る</button>
+        </div>
+      ) : (
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12 }}>
+          {bouquets.map(b=>(
+            <div key={b.id} style={{ background:"rgba(255,255,255,0.04)",borderRadius:14,border:"1px solid rgba(255,255,255,0.07)",overflow:"hidden" }}>
+              {/* Preview */}
+              <div style={{ height:160,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.2)",position:"relative",cursor:"pointer" }} onClick={()=>setPreviewBouquet(b)}>
+                <BouquetPreview bouquet={b} size={120}/>
+                <div style={{ position:"absolute",top:8,right:8,fontSize:9,background:"rgba(0,0,0,0.5)",color:"#9ca3af",borderRadius:8,padding:"2px 6px" }}>タップで拡大</div>
+              </div>
+              <div style={{ padding:"10px 12px" }}>
+                <div style={{ fontSize:13,fontWeight:700,color:"#f0e8ff",marginBottom:2 }}>{b.name}</div>
+                <div style={{ fontSize:10,color:"#7c6a9a",marginBottom:8 }}>
+                  {b.flowers.map(f=>FLOWERS.find(fl=>fl.id===f.id)?.emoji||"🌸").join("")} {b.flowers.reduce((a,f)=>a+f.count,0)}本 · {WRAP_STYLES.find(w=>w.id===b.wrapStyle)?.name}
+                </div>
+                <div style={{ display:"flex",gap:6 }}>
+                  <button onClick={()=>{ onPlace(b); onGoAltar(); }} style={{ flex:1,padding:"6px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" }}>⛩ 祭壇に飾る</button>
+                  <button onClick={()=>onDelete(b.id)} style={{ width:32,borderRadius:10,border:"none",background:"rgba(239,68,68,0.15)",color:"#ef4444",fontSize:13,cursor:"pointer" }}>🗑</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showBuilder && <BouquetBuilder isPro={isPro} purchasedMaterials={purchasedMaterials} onSave={(b)=>{ onSave(b); setShowBuilder(false); }} onClose={()=>setShowBuilder(false)}/>}
+      {previewBouquet && (
+        <div style={S.overlay} onClick={()=>setPreviewBouquet(null)}>
+          <div style={{ background:"#110d20",borderRadius:20,padding:24,textAlign:"center",border:"1px solid rgba(232,121,249,0.2)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize:16,fontWeight:800,color:"#f0e8ff",marginBottom:12 }}>{previewBouquet.name}</div>
+            <BouquetPreview bouquet={previewBouquet} size={240}/>
+            <button onClick={()=>setPreviewBouquet(null)} style={{ marginTop:16,padding:"8px 24px",borderRadius:20,border:"none",background:"rgba(255,255,255,0.08)",color:"#9ca3af",cursor:"pointer" }}>閉じる</button>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Bouquet Preview ──────────────────────────────────────────
+// Renders a bouquet as a visual SVG-like arrangement using emoji
+function BouquetPreview({ bouquet, size=100 }) {
+  const { flowers=[], ribbonColor="", wrapStyle="wrap_round" } = bouquet;
+  const ribbon = RIBBON_COLORS.find(r=>r.id===ribbonColor)||RIBBON_COLORS[0];
+
+  // Expand flowers into individual items
+  const items = [];
+  flowers.forEach(f=>{ const fl=FLOWERS.find(fl=>fl.id===f.id); if(fl) for(let i=0;i<f.count;i++) items.push(fl); });
+  if (!items.length) return <div style={{ fontSize:48 }}>💐</div>;
+
+  const total = items.length;
+  const fontSize = Math.max(12, Math.min(28, size/(Math.ceil(Math.sqrt(total))*1.4)));
+
+  // Arrange in a fan/circle based on wrapStyle
+  const getPos = (i, total, style) => {
+    const cx = size/2, cy = size*0.42;
+    if (style==="wrap_round") {
+      // circular arrangement
+      const angle = (i/total)*Math.PI*2 - Math.PI/2;
+      const r = size*0.22*(1+total*0.02);
+      return { x: cx+Math.cos(angle)*r, y: cy+Math.sin(angle)*r*0.75 };
+    } else if (style==="wrap_cascade") {
+      // waterfall — flowers drape down on one side
+      const col = i%3, row = Math.floor(i/3);
+      return { x: cx-20+(col*18), y: cy-30+(row*16) };
+    } else {
+      // posy — tight cluster
+      const angle = (i/total)*Math.PI*2;
+      const r = size*0.14*(1+i*0.015);
+      return { x: cx+Math.cos(angle)*r, y: cy+Math.sin(angle)*r*0.7 };
+    }
+  };
+
+  return (
+    <div style={{ width:size,height:size,position:"relative",display:"inline-block" }}>
+      {/* Wrap paper */}
+      <div style={{ position:"absolute",bottom:size*0.05,left:"50%",transform:"translateX(-50%)",width:size*0.45,height:size*0.38,background:`linear-gradient(160deg,${ribbon.color}22,${ribbon.color}44)`,borderRadius:`${size*0.04}px ${size*0.04}px ${size*0.08}px ${size*0.08}px`,border:`1px solid ${ribbon.color}55` }}/>
+      {/* Ribbon */}
+      <div style={{ position:"absolute",bottom:size*0.12,left:"50%",transform:"translateX(-50%)",fontSize:fontSize*0.8 }}>🎀</div>
+      {/* Stem */}
+      <div style={{ position:"absolute",bottom:size*0.05,left:"50%",transform:"translateX(-50%)",width:3,height:size*0.25,background:"#4ade80",borderRadius:2 }}/>
+      {/* Flowers */}
+      {items.slice(0,16).map((fl,i)=>{
+        const pos = getPos(i, Math.min(total,16), wrapStyle);
+        return (
+          <div key={i} style={{ position:"absolute",left:pos.x,top:pos.y,transform:"translate(-50%,-50%)",fontSize,lineHeight:1,zIndex:i+1,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}>
+            {fl.emoji}
+          </div>
+        );
+      })}
+      {total>16&&<div style={{ position:"absolute",bottom:2,right:2,fontSize:9,color:"#9ca3af" }}>+{total-16}</div>}
+    </div>
+  );
+}
+
+// ─── Bouquet Builder Modal ────────────────────────────────────
+function BouquetBuilder({ isPro, purchasedMaterials, onSave, onClose }) {
+  const [name, setName]           = useState("推しへの花束");
+  const [selectedFlowers, setSelectedFlowers] = useState([]); // [{id, count}]
+  const [ribbonColor, setRibbonColor] = useState("rb_pink");
+  const [wrapStyle, setWrapStyle]   = useState("wrap_round");
+  const [tab, setTab]               = useState("flowers");
+  const [error, setError]           = useState("");
+
+  const canUseFlower = (f) => f.free || isPro || purchasedMaterials.includes(f.id);
+
+  const setCount = (id, delta) => {
+    setSelectedFlowers(prev=>{
+      const ex = prev.find(f=>f.id===id);
+      if (!ex && delta>0) return [...prev,{id,count:1}];
+      if (!ex) return prev;
+      const newCount = ex.count+delta;
+      if (newCount<=0) return prev.filter(f=>f.id!==id);
+      return prev.map(f=>f.id===id?{...f,count:newCount}:f);
+    });
+  };
+
+  const totalFlowers = selectedFlowers.reduce((a,f)=>a+f.count,0);
+
+  const preview = { id:newUid(), name, flowers:selectedFlowers, ribbonColor, wrapStyle, createdAt:new Date().toISOString() };
+
+  const submit = () => {
+    if (!selectedFlowers.length) { setError("花を1種類以上選んでください"); return; }
+    if (!name.trim()) { setError("花束の名前を入力してください"); return; }
+    onSave(preview);
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:520 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>💐 花束を作る</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+
+        {/* Preview */}
+        <div style={{ display:"flex",alignItems:"center",gap:16,padding:"12px 14px",background:"rgba(255,255,255,0.03)",borderRadius:12,marginBottom:14,border:"1px solid rgba(255,255,255,0.07)" }}>
+          <BouquetPreview bouquet={preview} size={100}/>
+          <div style={{ flex:1 }}>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="花束の名前" style={{ ...S.input,fontSize:14,fontWeight:700,marginBottom:6 }} maxLength={30}/>
+            <div style={{ fontSize:11,color:"#7c6a9a" }}>
+              {totalFlowers>0 ? `${selectedFlowers.map(f=>{ const fl=FLOWERS.find(fl=>fl.id===f.id); return `${fl?.emoji}×${f.count}`; }).join(" ")} 合計${totalFlowers}本` : "花を選んでください"}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex",gap:6,marginBottom:12 }}>
+          {[["flowers","🌸 花を選ぶ"],["ribbon","🎀 リボン"],["wrap","💐 スタイル"]].map(([t,l])=>(
+            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:"6px",borderRadius:10,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:11,fontWeight:700,cursor:"pointer" }}>{l}</button>
+          ))}
+        </div>
+
+        {/* Flowers tab */}
+        {tab==="flowers" && (
+          <div style={{ maxHeight:260,overflowY:"auto" }}>
+            {!isPro&&<div style={{ fontSize:10,color:"#7c6a9a",marginBottom:8,padding:"6px 10px",background:"rgba(192,132,252,0.06)",borderRadius:8 }}>👑 PROプランで全ての花が使えます</div>}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
+              {FLOWERS.map(fl=>{
+                const sel = selectedFlowers.find(f=>f.id===fl.id);
+                const cnt = sel?.count||0;
+                const unlocked = canUseFlower(fl);
+                return (
+                  <div key={fl.id} style={{ background:cnt>0?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 6px",border:`1px solid ${cnt>0?"rgba(232,121,249,0.3)":"rgba(255,255,255,0.06)"}`,opacity:unlocked?1:0.5,textAlign:"center" }}>
+                    <div style={{ fontSize:24,marginBottom:3 }}>{fl.emoji}</div>
+                    <div style={{ fontSize:10,fontWeight:700,color:cnt>0?"#e879f9":"#d1d5db",marginBottom:4 }}>{fl.name}</div>
+                    {!unlocked ? (
+                      <div style={{ fontSize:9,color:"#c084fc" }}>👑 PRO</div>
+                    ) : (
+                      <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
+                        <button onClick={()=>setCount(fl.id,-1)} disabled={cnt===0} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:cnt>0?"rgba(232,121,249,0.2)":"rgba(255,255,255,0.05)",color:cnt>0?"#e879f9":"#4b5563",fontSize:12,cursor:cnt>0?"pointer":"default",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
+                        <span style={{ fontSize:12,fontWeight:700,color:cnt>0?"#e879f9":"#6b7280",width:16,textAlign:"center" }}>{cnt}</span>
+                        <button onClick={()=>setCount(fl.id,+1)} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:"rgba(232,121,249,0.2)",color:"#e879f9",fontSize:12,cursor:"pointer",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>＋</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Ribbon tab */}
+        {tab==="ribbon" && (
+          <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",padding:"8px 0" }}>
+            {RIBBON_COLORS.map(r=>(
+              <button key={r.id} onClick={()=>setRibbonColor(r.id)}
+                style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"8px 10px",borderRadius:12,border:`2px solid ${ribbonColor===r.id?r.color:"transparent"}`,background:ribbonColor===r.id?`${r.color}18`:"rgba(255,255,255,0.03)",cursor:"pointer" }}>
+                <div style={{ width:28,height:28,borderRadius:"50%",background:r.color,boxShadow:`0 2px 8px ${r.color}66` }}/>
+                <div style={{ fontSize:10,color:ribbonColor===r.id?r.color:"#9ca3af",fontWeight:ribbonColor===r.id?700:400 }}>{r.name}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Wrap style tab */}
+        {tab==="wrap" && (
+          <div style={{ display:"flex",flexDirection:"column",gap:8,padding:"4px 0" }}>
+            {WRAP_STYLES.map(w=>(
+              <button key={w.id} onClick={()=>setWrapStyle(w.id)}
+                style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:`2px solid ${wrapStyle===w.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.08)"}`,background:wrapStyle===w.id?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",cursor:"pointer",textAlign:"left" }}>
+                <div style={{ width:60,height:60,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <BouquetPreview bouquet={{ flowers:[{id:"fl_rose",count:3},{id:"fl_daisy",count:2}], ribbonColor:"rb_pink", wrapStyle:w.id, name:"" }} size={56}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:13,fontWeight:700,color:wrapStyle===w.id?"#e879f9":"#f0e8ff" }}>{w.name}</div>
+                  <div style={{ fontSize:11,color:"#7c6a9a",marginTop:2 }}>{w.desc}</div>
+                </div>
+                {wrapStyle===w.id&&<div style={{ marginLeft:"auto",color:"#e879f9",fontWeight:700 }}>✓</div>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error&&<div style={{ color:"#f87171",fontSize:12,margin:"8px 0",fontWeight:600 }}>{error}</div>}
+
+        <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:totalFlowers>0?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.08)",color:totalFlowers>0?"#fff":"#4b5563",fontSize:15,fontWeight:800,cursor:totalFlowers>0?"pointer":"default",marginTop:12 }}>
+          {totalFlowers>0?`💐 この花束を保存する`:"花を選んでください"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1286,6 +1581,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
+        {!viewingShared&&<button onClick={()=>setPage("bouquet")} style={{ ...S.modeBtn,border:"1px solid rgba(251,191,36,0.3)",color:"#fbbf24" }}>💐 花束</button>}
         {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
@@ -1570,6 +1866,29 @@ function LightOverlay({ materialId }) {
 function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, onPurchase, canUseMaterial, onClose, onUpgrade }) {
   const [tab, setTab] = useState("bg");
   const [colorInput, setColorInput] = useState(altar.bgCustomColor||"#1a0a2e");
+  const [customDecoName, setCustomDecoName] = useState("");
+  const [customDecoImg, setCustomDecoImg]   = useState(null);
+  const customDecoRef = useRef(null);
+
+  const handleCustomDecoFile = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 3*1024*1024) { alert("3MB以下にしてください"); return; }
+    setCustomDecoImg(await readFileAsDataURL(f));
+  };
+
+  const addCustomDeco = () => {
+    if (!customDecoImg) { alert("画像を選択してください"); return; }
+    const cur = altar.decoItems||[];
+    onUpdateAltar({ decoItems:[...cur,{
+      id:newUid(), materialId:"custom",
+      customImage:customDecoImg,
+      customName:customDecoName.trim()||"マイデコ",
+      x:150+Math.random()*200, y:100+Math.random()*150,
+      scale:1.5, zIndex:(cur.length+1)*10,
+    }]});
+    setCustomDecoImg(null); setCustomDecoName("");
+    alert("追加しました！祭壇上で位置を調整してください ✓");
+  };
   const TABS = [["bg","🌌 背景"],["frame","🖼 フレーム"],["deco","🎀 デコ"],["light","💡 ライト"]];
   const items = MATERIALS.filter(m=>m.type===tab);
 
@@ -1711,6 +2030,32 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
             );
           })}
         </div>
+
+        {/* Custom deco upload — shown in deco tab */}
+        {tab==="deco"&&(
+          <div style={{ background:"rgba(232,121,249,0.06)",border:"1px solid rgba(232,121,249,0.2)",borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+            <div style={{ fontSize:12,fontWeight:700,color:"#e879f9",marginBottom:8 }}>📁 自分で描いたデコをアップロード</div>
+            <div style={{ display:"flex",gap:8,alignItems:"flex-start" }}>
+              {/* Preview / upload area */}
+              <div style={{ width:72,height:72,borderRadius:10,border:"2px dashed rgba(232,121,249,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,0.02)" }}
+                onClick={()=>customDecoRef.current?.click()}>
+                {customDecoImg
+                  ? <img src={customDecoImg} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>
+                  : <div style={{ textAlign:"center",color:"#7c6a9a",fontSize:10 }}>📷<br/>選択</div>
+                }
+                <input ref={customDecoRef} type="file" accept="image/png,image/gif,image/webp" onChange={handleCustomDecoFile} style={{ display:"none" }}/>
+              </div>
+              <div style={{ flex:1,display:"flex",flexDirection:"column",gap:6 }}>
+                <input value={customDecoName} onChange={e=>setCustomDecoName(e.target.value)} placeholder="名前（省略可）" style={{ ...S.input,padding:"6px 10px",fontSize:12 }} maxLength={20}/>
+                <div style={{ fontSize:9,color:"#6b7280",lineHeight:1.5 }}>PNG推奨・透過対応・3MB以下<br/>アイビスペイントで書き出したものをそのまま使えます</div>
+                <button onClick={addCustomDeco} disabled={!customDecoImg}
+                  style={{ padding:"6px",borderRadius:8,border:"none",background:customDecoImg?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.06)",color:customDecoImg?"#fff":"#4b5563",fontSize:11,fontWeight:700,cursor:customDecoImg?"pointer":"default" }}>
+                  ＋ 祭壇に追加
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {tab==="deco"&&(altar.decoItems||[]).length>0&&(
           <div style={{ marginTop:8,display:"flex",justifyContent:"flex-end" }}>
@@ -2544,6 +2889,12 @@ function FlatStage({ flatShelf, template, goodById, isDark, viewingShared, dragS
 // Renders deco stickers on top of altar (both shelf and free modes)
 function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDeco, onStartDrag, onSelect, onScale, onRemove }) {
   if (!decoItems?.length) return null;
+  // Helper to render a bouquet deco item
+  const BouquetDecoItem = ({item,isSel,isDragging}) => {
+    const b = item.bouquetData;
+    if (!b) return <div style={{ fontSize:36 }}>💐</div>;
+    return <BouquetPreview bouquet={b} size={80}/>;
+  };
   const DECO_ANIMS = {
     dc_ribbon: "decoRibbon 1.5s ease-in-out infinite alternate",
     dc_light:  "decoLight 1.2s ease-in-out infinite alternate",
@@ -2559,8 +2910,10 @@ function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDec
         @keyframes decoFire   { from{transform:scaleY(1) scaleX(1)} to{transform:scaleY(1.2) scaleX(0.9)} }
       `}</style>
       {decoItems.map(item=>{
-        const mat = MATERIALS.find(m=>m.id===item.materialId);
-        if (!mat) return null;
+        const isCustom  = item.materialId==="custom";
+        const isBouquet = item.materialId==="bouquet";
+        const mat = isBouquet ? {id:"bouquet",emoji:"💐",animated:false} : isCustom ? {id:"custom",emoji:"🖼️",animated:false} : MATERIALS.find(m=>m.id===item.materialId);
+        if (!mat && !isCustom && !isBouquet) return null;
         const isSel = selectedDeco===item.id;
         const isDragging = draggingDeco===item.id;
         const anim = mat.animated ? DECO_ANIMS[mat.id] : undefined;
@@ -2582,7 +2935,11 @@ function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDec
               transition:isDragging?"none":"filter 0.2s",
               userSelect:"none",
             }}>
-            {mat.emoji}
+            {isBouquet
+              ? <BouquetDecoItem item={item} isSel={isSel} isDragging={isDragging}/>
+              : isCustom && item.customImage
+              ? <img src={item.customImage} alt={item.customName||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
+              : mat?.emoji||"🖼️"}
             {/* Controls */}
             {isSel && !viewingShared && (
               <div style={{ position:"absolute",top:-34,left:"50%",transform:"translateX(-50%)",display:"flex",gap:4,background:isDark?"rgba(10,5,20,0.95)":"rgba(255,255,255,0.95)",borderRadius:20,padding:"4px 8px",border:"1px solid rgba(232,121,249,0.3)",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",whiteSpace:"nowrap" }}>
