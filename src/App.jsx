@@ -1740,6 +1740,7 @@ function GoodCard({ good, count=1, characters, isPro, onStatusChange, onDelete, 
         {good.series&&<div style={S.cardSeries}>{good.series}</div>}
         {good.purchaseDate&&<div style={S.cardMeta}>📅 {good.purchaseDate}</div>}
         {good.releaseDate&&<div style={S.cardMeta}>🔖 発売: {good.releaseDate}</div>}
+        {good.proofImage&&<div style={{ fontSize:10,color:"#4ade80",fontWeight:700,marginTop:2 }}>✓ 証明済み</div>}
         {good.officialUrl&&<a href={good.officialUrl} target="_blank" rel="noreferrer" style={{ fontSize:10,color:"#818cf8",display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>🔗 公式サイト</a>}
       </div>
       <div style={S.cardActions}>
@@ -2971,46 +2972,70 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
   const [memo,setMemo]           = useState("");
   const [characterId,setCharacterId] = useState(null);
   const [error,setError]         = useState("");
+  const [imgWarn,setImgWarn]     = useState(""); // スクショ検出警告
+  const [proofImage,setProofImage] = useState(null); // 手持ち証明写真
   const [removingBg,setRemovingBg] = useState(false);
   const [autoBgRemove,setAutoBgRemove] = useState(true);
   const fileRef = useRef(null);
+  const proofRef = useRef(null);
 
   // Free plan emoji picker options
   const EMOJI_PICKS = ["📦","🧸","🖼️","🪆","🎀","🎵","📚","🎮","☕","⭐","🌸","💎","🎪","🖊️","🎭","🏆","🃏","🔵","🎰","🌙","🔥","🐱","🦊","🐰","🌈"];
 
+  // スクショ・EC画像っぽいか判定
+  const checkImageTrust = async(file) => {
+    try {
+      const { default: exifr } = await import("exifr");
+      const exif = await exifr.parse(file, { pick:["Make","Model","DateTime","DateTimeOriginal"] });
+      if (exif?.Make || exif?.Model || exif?.DateTimeOriginal) {
+        setImgWarn(""); // カメラ撮影 → 信頼できる
+      } else {
+        setImgWarn("⚠️ この画像にはカメラ情報がありません。スクリーンショットや商品画像の可能性があります。手持ち写真の登録を推奨します。");
+      }
+    } catch { setImgWarn(""); }
+  };
+
   const handleFile = async(e) => {
     const f=e.target.files[0]; if(!f) return;
     if(f.size>5*1024*1024){setError("5MB以下にしてください");return;}
+    setImgWarn("");
+    checkImageTrust(f); // 非同期でEXIFチェック（ブロックしない）
     if (autoBgRemove) {
       setRemovingBg(true); setError("");
       try {
         const { removeBackground } = await import("@imgly/background-removal");
         const blob = await removeBackground(f, { output: { format:"image/png", quality:1 } });
-        const dataUrl = await readFileAsDataURL(blob);
-        setImage(dataUrl);
+        setImage(await readFileAsDataURL(blob));
       } catch {
-        // 失敗したら元の画像をそのまま使う
         setImage(await readFileAsDataURL(f));
         setError("背景除去に失敗しました。元の画像で登録します。");
-      } finally {
-        setRemovingBg(false);
-      }
+      } finally { setRemovingBg(false); }
     } else {
       setImage(await readFileAsDataURL(f)); setError("");
     }
   };
 
+  const handleProofFile = async(e) => {
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size>5*1024*1024){setError("証明写真は5MB以下にしてください");return;}
+    setProofImage(await readFileAsDataURL(f));
+  };
+
   const resolvedEmoji = emojiInput || "📦";
+
+  const today = new Date().toISOString().split("T")[0];
 
   const submit = () => {
     if(!name.trim()){setError("グッズ名を入力してください");return;}
     if(imgMode==="url"&&officialUrl&&!/^https?:\/\/.+/.test(officialUrl)){setError("URLはhttpまたはhttpsで始めてください");return;}
+    if(purchaseDate && purchaseDate > today){setError("購入日に未来の日付は設定できません");return;}
     onAdd({
       id:newUid(), name:name.trim(), series:series.trim(), status, goodType,
       image: imgMode==="upload"?image:null,
       emoji: resolvedEmoji,
       officialUrl: officialUrl.trim()||null,
       purchaseDate, releaseDate, memo:memo.trim(), characterId,
+      proofImage: proofImage||null,  // 手持ち証明写真
       createdAt:new Date().toISOString(),
     });
     onClose();
@@ -3134,9 +3159,34 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
           </div>
         )}
 
-        {status==="owned"&&<div style={S.fieldGroup}><label style={S.label}>購入日</label><input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} style={S.input}/></div>}
+        {status==="owned"&&<div style={S.fieldGroup}><label style={S.label}>購入日</label><input type="date" value={purchaseDate} max={today} onChange={e=>setPurchaseDate(e.target.value)} style={S.input}/></div>}
         {status==="reserved"&&<div style={S.fieldGroup}><label style={S.label}>発売予定日</label><input type="date" value={releaseDate} onChange={e=>setReleaseDate(e.target.value)} style={S.input}/></div>}
         <div style={S.fieldGroup}><label style={S.label}>メモ</label><textarea value={memo} onChange={e=>setMemo(e.target.value)} placeholder="イベント限定品など" style={{ ...S.input,height:48,resize:"none" }} maxLength={100}/></div>
+
+        {/* スクショ警告 */}
+        {imgWarn && (
+          <div style={{ background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#fbbf24",marginBottom:10,lineHeight:1.6 }}>
+            {imgWarn}
+          </div>
+        )}
+
+        {/* 証明写真（持ってる場合のみ） */}
+        {status==="owned" && (
+          <div style={{ background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:12 }}>
+            <div style={{ fontSize:12,color:"#4ade80",fontWeight:700,marginBottom:6 }}>✋ 手持ち証明写真（任意）</div>
+            <div style={{ fontSize:11,color:"#86efac",marginBottom:8,lineHeight:1.6 }}>グッズを手に持って撮った写真を登録すると <strong>✓ 証明済み</strong> バッジが付きます。交換・譲渡での信頼度が上がります。</div>
+            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+              <div onClick={()=>proofRef.current?.click()} style={{ width:64,height:64,borderRadius:10,border:"2px dashed rgba(74,222,128,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0 }}>
+                {proofImage?<img src={proofImage} alt="proof" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>:<span style={{ fontSize:22 }}>📸</span>}
+              </div>
+              <div style={{ fontSize:11,color:"#6ee7b7",lineHeight:1.7 }}>
+                実際に手に持った写真を撮って追加してください。<br/>
+                <span style={{ color:"#fca5a5" }}>商品画像・スクショはNGです</span>
+              </div>
+            </div>
+            <input ref={proofRef} type="file" accept="image/*" onChange={handleProofFile} style={{ display:"none" }}/>
+          </div>
+        )}
 
         {status==="wanted" && (
           <div style={{ background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#93c5fd",marginBottom:12,lineHeight:1.6 }}>
