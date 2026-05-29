@@ -121,64 +121,6 @@ const MATERIALS = [
   { id:"lt_warm", type:"light", name:"ウォーム", emoji:"🌟", tier:"free", animated:false, desc:"温かい光"     },
 ];
 
-// ── Flower catalog (for bouquet builder) ─────────────────────
-const FLOWERS = [
-  // 無料
-  { id:"fl_rose",      name:"バラ",       emoji:"🌹", color:"#e11d48", free:true,  desc:"定番の赤バラ"     },
-  { id:"fl_pink_rose", name:"ピンクバラ", emoji:"🌸", color:"#f472b6", free:true,  desc:"やわらかピンク"   },
-  { id:"fl_tulip",     name:"チューリップ",emoji:"🌷", color:"#f43f5e", free:true,  desc:"春の定番"         },
-  { id:"fl_daisy",     name:"デイジー",   emoji:"🌼", color:"#fbbf24", free:true,  desc:"かわいい小花"     },
-  { id:"fl_sunflower", name:"ひまわり",   emoji:"🌻", color:"#f59e0b", free:true,  desc:"元気な黄色"       },
-  { id:"fl_cherry",    name:"桜",         emoji:"🌸", color:"#fda4af", free:true,  desc:"春の桜"           },
-  // 有料（PRO or 個別購入）
-  { id:"fl_lily",      name:"ユリ",       emoji:"🌺", color:"#c026d3", free:false, desc:"気品ある白ユリ",  price:120 },
-  { id:"fl_lavender",  name:"ラベンダー", emoji:"💜", color:"#a855f7", free:false, desc:"癒しの紫",        price:120 },
-  { id:"fl_carnation", name:"カーネーション",emoji:"💐",color:"#f9a8d4",free:false,desc:"感謝を込めて",    price:120 },
-  { id:"fl_cosmos",    name:"コスモス",   emoji:"🌸", color:"#f0abfc", free:false, desc:"秋桜のやさしさ",  price:120 },
-  { id:"fl_orchid",    name:"胡蝶蘭",    emoji:"🌺", color:"#e879f9", free:false, desc:"高貴な白",        price:150 },
-  { id:"fl_babysbreath",name:"かすみ草",  emoji:"🤍", color:"#f1f5f9", free:false, desc:"花束を引き立てる",price:100 },
-];
-
-const RIBBON_COLORS = [
-  { id:"rb_pink",   name:"ピンク",   color:"#f472b6" },
-  { id:"rb_white",  name:"ホワイト", color:"#f8fafc" },
-  { id:"rb_purple", name:"パープル", color:"#a855f7" },
-  { id:"rb_red",    name:"レッド",   color:"#e11d48" },
-  { id:"rb_gold",   name:"ゴールド", color:"#f59e0b" },
-  { id:"rb_blue",   name:"ブルー",   color:"#60a5fa" },
-  { id:"rb_green",  name:"グリーン", color:"#4ade80" },
-  { id:"rb_black",  name:"ブラック", color:"#1e293b" },
-];
-
-const WRAP_STYLES = [
-  { id:"wrap_round",   name:"丸ブーケ",   desc:"定番の丸い束"   },
-  { id:"wrap_cascade", name:"カスケード", desc:"流れるように垂れ下がる" },
-  { id:"wrap_posy",    name:"ポージー",   desc:"小ぶりでコンパクト" },
-];
-
-// ── 誕生花データベース（月ごと代表花） ──────────────────────
-// 将来的に365日対応予定。まず12ヶ月の代表花から。
-const BIRTH_FLOWERS_DB = [
-  { month:1,  day:null, name:"スノードロップ", emoji:"🤍", color:"#f0f9ff", meaning:"希望・慰め",        flowerIds:["fl_babysbreath"] },
-  { month:2,  day:null, name:"パンジー",       emoji:"💜", color:"#7c3aed", meaning:"思慮深さ・愛",      flowerIds:["fl_lavender"] },
-  { month:3,  day:null, name:"桜",             emoji:"🌸", color:"#fda4af", meaning:"精神の美・優雅さ",  flowerIds:["fl_cherry"] },
-  { month:4,  day:null, name:"チューリップ",   emoji:"🌷", color:"#f43f5e", meaning:"愛の告白・誠実",    flowerIds:["fl_tulip"] },
-  { month:5,  day:null, name:"バラ",           emoji:"🌹", color:"#e11d48", meaning:"愛情・情熱",        flowerIds:["fl_rose"] },
-  { month:6,  day:null, name:"アジサイ",       emoji:"💙", color:"#60a5fa", meaning:"辛抱強い愛情",      flowerIds:["fl_babysbreath","fl_lavender"] },
-  { month:7,  day:null, name:"ひまわり",       emoji:"🌻", color:"#f59e0b", meaning:"あなただけを見つめる",flowerIds:["fl_sunflower"] },
-  { month:8,  day:null, name:"ひまわり",       emoji:"🌻", color:"#f59e0b", meaning:"光輝・崇拝",        flowerIds:["fl_sunflower","fl_daisy"] },
-  { month:9,  day:null, name:"コスモス",       emoji:"🌸", color:"#f0abfc", meaning:"乙女の純潔・調和",  flowerIds:["fl_cosmos"] },
-  { month:10, day:null, name:"コスモス",       emoji:"🌸", color:"#f0abfc", meaning:"少女の純潔・愛情",  flowerIds:["fl_cosmos","fl_babysbreath"] },
-  { month:11, day:null, name:"カーネーション", emoji:"💐", color:"#f9a8d4", meaning:"愛・感謝",          flowerIds:["fl_carnation"] },
-  { month:12, day:null, name:"ポインセチア",   emoji:"❤️", color:"#dc2626", meaning:"祝福・幸運を祈る",  flowerIds:["fl_rose","fl_carnation"] },
-];
-
-// 月から誕生花を取得
-function getBirthFlower(month, day) {
-  const m = parseInt(month);
-  return BIRTH_FLOWERS_DB.find(b=>b.month===m) || BIRTH_FLOWERS_DB[0];
-}
-
 // グッズ種類マスタ（無料プランでも絞り込み可能）
 const GOOD_TYPES = [
   { id:"acrylic",  label:"アクスタ",   emoji:"🖼️" },
@@ -275,9 +217,6 @@ export default function App() {
   const [showShare, setShowShare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showMaterials, setShowMaterials]   = useState(false);
-  const [showBouquet, setShowBouquet]       = useState(false);
-  const [bouquets, setBouquets]             = useState([]); // saved bouquets
-  const [customFlowers, setCustomFlowers]   = useState([]); // user-uploaded flower images [{id,name,image}]
   const [showRandomSets, setShowRandomSets] = useState(false);
   const [showAltarManager, setShowAltarManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
@@ -299,8 +238,6 @@ export default function App() {
     if (d.characters) setCharacters(d.characters);
     if (d.purchasedMaterials) setPurchasedMaterials(d.purchasedMaterials);
     if (d.randomSets) setRandomSets(d.randomSets);
-    if (d.bouquets)   setBouquets(d.bouquets);
-    if (d.customFlowers) setCustomFlowers(d.customFlowers);
   };
 
   useEffect(()=>{
@@ -329,13 +266,13 @@ export default function App() {
   useEffect(()=>{ if(loaded) setTimeout(()=>setSplashDone(true), 400); },[loaded]);
 
   // ── Auto-save ─────────────────────────────────────────────
-  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers)=>{
+  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets)=>{
     if (!loaded) return;
     setSaveStatus("saving");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async()=>{
       try {
-        const data = {plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers};
+        const data = {plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets};
         // Always save locally (critical — error here shows failure)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         // Also save to cloud if logged in (non-fatal — failure is silently ignored)
@@ -348,7 +285,7 @@ export default function App() {
     },700);
   },[loaded]);
 
-  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers,loaded]);
+  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,loaded]);
 
   const showToast = (msg)=>{ setToast(msg); setTimeout(()=>setToast(null),2200); };
 
@@ -387,16 +324,6 @@ export default function App() {
   // ── Characters CRUD (PRO) ──────────────────────────────────
   const addCharacter    = (c)=>{ setCharacters(prev=>[...prev,c]); showToast("推しを追加しました ✓"); };
   const deleteCharacter = (id)=>{ setCharacters(prev=>prev.filter(c=>c.id!==id)); setGoods(prev=>prev.map(g=>g.characterId===id?{...g,characterId:null}:g)); };
-
-  // ── Bouquets CRUD ──────────────────────────────────────────
-  const saveBouquet = (b) => { setBouquets(prev=>[b,...prev]); showToast("花束を保存しました 💐"); };
-  const deleteBouquet = (id) => setBouquets(prev=>prev.filter(b=>b.id!==id));
-  const placeBouquetOnAltar = (b) => {
-    // Place bouquet as a decoItem on current altar
-    const cur = (currentAltar.decoItems||[]);
-    updateAltar(currentAltar.id, { decoItems:[...cur,{ id:newUid(), materialId:"bouquet", bouquetData:b, x:200+Math.random()*150, y:150+Math.random()*80, scale:1.2, zIndex:(cur.length+1)*10 }] });
-    showToast("花束を祭壇に配置しました 💐");
-  };
 
   // ── RandomSets CRUD ────────────────────────────────────────
   const addRandomSet    = (s)=>{ setRandomSets(prev=>[s,...prev]); showToast("ランダムセットを追加しました ✓"); };
@@ -480,7 +407,6 @@ export default function App() {
           ["collection","📦","コレクション"],
           ["random","🎰","ガチャ"],
           ["altar","⛩","祭壇"],
-          ["bouquet","💐","花束"],
         ].map(([p,icon,label])=>(
           <button key={p} onClick={()=>setPage(p)} style={{ ...S.bottomNavBtn, ...(page===p?S.bottomNavBtnOn:{}) }}>
             <span style={{ fontSize:20 }}>{icon}</span>
@@ -489,9 +415,7 @@ export default function App() {
         ))}
       </nav>
 
-      {page==="bouquet"
-        ? <BouquetPage bouquets={bouquets} isPro={isPro} purchasedMaterials={purchasedMaterials} customFlowers={customFlowers} onSave={saveBouquet} onDelete={deleteBouquet} onPlace={placeBouquetOnAltar} onGoAltar={()=>setPage("altar")} characters={characters} onAddCustomFlower={addCustomFlower} onDeleteCustomFlower={deleteCustomFlower} />
-        : page==="random"
+      {page==="random"
         ? <RandomSetsPage randomSets={randomSets} isPro={isPro} onAdd={addRandomSet} onUpdate={updateRandomSet} onDelete={deleteRandomSet} onAddDrawLog={addDrawLog} />
         : page==="collection"
         ? <CollectionPage goods={goods} counts={counts} characters={characters} isPro={isPro}
@@ -559,7 +483,7 @@ export default function App() {
               showToast("✓ クラウドのデータを読み込みました");
             } else {
               // 初回ログイン：ローカルデータをクラウドに保存
-              const data = {plan,altars,activeAltarId:altars[0]?.id,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers};
+              const data = {plan,altars,activeAltarId:altars[0]?.id,goods,characters,purchasedMaterials,randomSets};
               await saveToCloud(sess.user.id, data);
               showToast("✓ ログインしました");
             }
@@ -600,487 +524,6 @@ export default function App() {
 
       {showTerms   && <TermsModal   onClose={()=>setShowTerms(false)}/>}
       {showPrivacy && <PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
-    </div>
-  );
-}
-
-// ─── Bouquet Page ────────────────────────────────────────────
-// ─── Custom Flower Upload ────────────────────────────────────
-function CustomFlowerUpload({ onAdd }) {
-  const fileRef = useRef(null);
-  const [open, setOpen]     = useState(false);
-  const [queue, setQueue]   = useState([]); // [{img, name}]
-  const [current, setCurrent] = useState(0); // index in queue
-
-  const handleFiles = async(e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const loaded = [];
-    for (const f of files) {
-      if (f.size > 3*1024*1024) continue;
-      const img = await readFileAsDataURL(f);
-      // guess name from filename
-      const raw = f.name.replace(/\.[^.]+$/, "").replace(/無題\d+_\d+/, "");
-      loaded.push({ img, name: raw || "" });
-    }
-    if (!loaded.length) { alert("読み込める画像がありませんでした"); return; }
-    setQueue(loaded);
-    setCurrent(0);
-    setOpen(true);
-    e.target.value = "";
-  };
-
-  const item = queue[current];
-
-  const updateName = (val) => {
-    setQueue(prev => prev.map((q,i) => i===current ? {...q, name:val} : q));
-  };
-
-  const submitOne = () => {
-    if (!item) return;
-    onAdd({ id:newUid(), name:item.name.trim()||"マイ花", image:item.img });
-    if (current < queue.length-1) {
-      setCurrent(c=>c+1);
-    } else {
-      setOpen(false); setQueue([]); setCurrent(0);
-    }
-  };
-
-  const submitAll = () => {
-    queue.forEach(q => onAdd({ id:newUid(), name:q.name.trim()||"マイ花", image:q.img }));
-    setOpen(false); setQueue([]); setCurrent(0);
-  };
-
-  const skip = () => {
-    if (current < queue.length-1) setCurrent(c=>c+1);
-    else { setOpen(false); setQueue([]); setCurrent(0); }
-  };
-
-  return (
-    <>
-      <button onClick={()=>fileRef.current?.click()} style={{ fontSize:11,fontWeight:700,color:"#e879f9",background:"rgba(232,121,249,0.1)",border:"1px solid rgba(232,121,249,0.2)",borderRadius:10,padding:"4px 12px",cursor:"pointer" }}>
-        ＋ まとめて追加
-      </button>
-      <input ref={fileRef} type="file" accept="image/png,image/gif,image/webp" multiple onChange={handleFiles} style={{ display:"none" }}/>
-
-      {open && item && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
-          <div style={{ background:"#110d20",borderRadius:18,padding:22,width:"100%",maxWidth:340,border:"1px solid rgba(232,121,249,0.2)" }}>
-            {/* Progress */}
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
-              <div style={{ fontSize:15,fontWeight:800,color:"#e879f9" }}>🌸 花素材を登録</div>
-              <div style={{ fontSize:11,color:"#7c6a9a" }}>{current+1} / {queue.length}枚</div>
-            </div>
-
-            {/* Progress bar */}
-            <div style={{ height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,marginBottom:14,overflow:"hidden" }}>
-              <div style={{ height:"100%",width:`${((current+1)/queue.length)*100}%`,background:"linear-gradient(90deg,#e879f9,#818cf8)",transition:"width 0.3s" }}/>
-            </div>
-
-            {/* Preview */}
-            <img src={item.img} alt="preview" style={{ width:"100%",height:140,objectFit:"contain",marginBottom:10,background:"rgba(255,255,255,0.03)",borderRadius:10 }}/>
-
-            {/* Name input */}
-            <div style={{ fontSize:11,color:"#7c6a9a",marginBottom:5 }}>花の名前</div>
-            <input value={item.name} onChange={e=>updateName(e.target.value)}
-              placeholder="例: 黄色マーガレット、ピンク小花…"
-              style={{ width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"8px 10px",color:"#f0e8ff",fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:12 }}
-              maxLength={20} autoFocus
-              onKeyDown={e=>e.key==="Enter"&&submitOne()}/>
-
-            {/* Actions */}
-            <div style={{ display:"flex",gap:8,marginBottom:8 }}>
-              <button onClick={skip} style={{ flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,cursor:"pointer" }}>
-                {current<queue.length-1?"スキップ →":"スキップして終了"}
-              </button>
-              <button onClick={submitOne} style={{ flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
-                {current<queue.length-1?"追加して次へ →":"追加して完了 ✓"}
-              </button>
-            </div>
-            {queue.length>1&&current===0&&(
-              <button onClick={submitAll} style={{ width:"100%",padding:"7px",borderRadius:10,border:"1px solid rgba(232,121,249,0.2)",background:"transparent",color:"#e879f9",fontSize:11,cursor:"pointer" }}>
-                全{queue.length}枚を名前なしで一括追加
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function BouquetPage({ bouquets, isPro, purchasedMaterials, customFlowers, onSave, onDelete, onPlace, onGoAltar, characters, onAddCustomFlower, onDeleteCustomFlower }) {
-  const [showBuilder, setShowBuilder]   = useState(false);
-  const [previewBouquet, setPreviewBouquet] = useState(null);
-  const [birthTab, setBirthTab]         = useState("saved"); // "saved" | "birth"
-
-  // 今日の誕生花
-  const today = new Date();
-  const todayFlower = getBirthFlower(today.getMonth()+1, today.getDate());
-
-  // 推しの誕生日チェック（今月）
-  const thisMonth = today.getMonth()+1;
-  const oshiThisMonth = (characters||[]).filter(c=>{
-    if (!c.birthday) return false;
-    const m = parseInt(c.birthday.slice(5,7));
-    return m===thisMonth;
-  });
-
-  // 推しの誕生花を自動生成してビルダーに渡す
-  const createBirthBouquet = (oshi) => {
-    const m = parseInt(oshi.birthday.slice(5,7));
-    const bf = getBirthFlower(m, null);
-    const flowers = bf.flowerIds.map(id=>({id, count:3}));
-    // open builder with pre-selected flowers
-    setShowBuilder({ preset:{ name:`${oshi.name}への誕生花束`, flowers, ribbonColor:"rb_pink", wrapStyle:"wrap_round" } });
-  };
-
-  return (
-    <main style={S.main}>
-      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-        <div>
-          <div style={{ fontSize:18,fontWeight:800,color:"#f0e8ff" }}>💐 花束メーカー</div>
-          <div style={{ fontSize:12,color:"#7c6a9a",marginTop:2 }}>誕生花で推しへの気持ちをカタチに</div>
-        </div>
-        <button onClick={()=>setShowBuilder({})} style={S.addBtn}>＋ 花束を作る</button>
-      </div>
-
-      {/* Today's birth flower banner */}
-      <div style={{ background:`linear-gradient(135deg,${todayFlower.color}22,rgba(232,121,249,0.08))`,border:`1px solid ${todayFlower.color}44`,borderRadius:14,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:14 }}>
-        <div style={{ fontSize:36 }}>{todayFlower.emoji}</div>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:11,color:"#7c6a9a",fontWeight:700,marginBottom:2 }}>今日（{thisMonth}月）の誕生花</div>
-          <div style={{ fontSize:16,fontWeight:800,color:"#f0e8ff" }}>{todayFlower.name}</div>
-          <div style={{ fontSize:11,color:"#9ca3af",marginTop:2 }}>花言葉: {todayFlower.meaning}</div>
-        </div>
-        <button onClick={()=>setShowBuilder({ preset:{ name:`${todayFlower.name}の花束`, flowers:todayFlower.flowerIds.map(id=>({id,count:3})), ribbonColor:"rb_pink", wrapStyle:"wrap_round" }})}
-          style={{ padding:"8px 14px",borderRadius:20,border:"none",background:`${todayFlower.color}`,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0,boxShadow:`0 2px 10px ${todayFlower.color}66` }}>
-          この花で作る →
-        </button>
-      </div>
-
-      {/* Oshi birthday this month */}
-      {oshiThisMonth.length>0&&(
-        <div style={{ background:"rgba(245,158,11,0.07)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:12,padding:"12px 16px",marginBottom:16 }}>
-          <div style={{ fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8 }}>🎂 今月が誕生日の推し</div>
-          <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-            {oshiThisMonth.map(c=>{
-              const bf = getBirthFlower(parseInt(c.birthday.slice(5,7)),null);
-              return (
-                <button key={c.id} onClick={()=>createBirthBouquet(c)}
-                  style={{ display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:20,border:`1px solid ${c.color}44`,background:`${c.color}11`,cursor:"pointer" }}>
-                  <span style={{ fontSize:16 }}>{c.emoji}</span>
-                  <div style={{ textAlign:"left" }}>
-                    <div style={{ fontSize:11,fontWeight:700,color:c.color }}>{c.name}</div>
-                    <div style={{ fontSize:9,color:"#7c6a9a" }}>{bf.emoji} {bf.name}の花束を作る</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Birth flowers calendar */}
-      <div style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 16px",marginBottom:16 }}>
-        <div style={{ fontSize:12,fontWeight:700,color:"#c084fc",marginBottom:10 }}>📅 月ごとの誕生花</div>
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6 }}>
-          {BIRTH_FLOWERS_DB.map(bf=>(
-            <button key={bf.month} onClick={()=>setShowBuilder({ preset:{ name:`${bf.month}月の誕生花束`, flowers:bf.flowerIds.map(id=>({id,count:3})), ribbonColor:"rb_pink", wrapStyle:"wrap_round" }})}
-              style={{ padding:"8px 4px",borderRadius:10,border:`1px solid ${bf.month===thisMonth?bf.color+"88":"rgba(255,255,255,0.07)"}`,background:bf.month===thisMonth?`${bf.color}18`:"rgba(255,255,255,0.02)",cursor:"pointer",textAlign:"center",transition:"all 0.15s" }}
-              title={`${bf.month}月の誕生花: ${bf.name}`}>
-              <div style={{ fontSize:18 }}>{bf.emoji}</div>
-              <div style={{ fontSize:9,color:bf.month===thisMonth?bf.color:"#6b7280",fontWeight:bf.month===thisMonth?700:400,marginTop:2 }}>{bf.month}月</div>
-              <div style={{ fontSize:8,color:"#4b5563",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{bf.name}</div>
-            </button>
-          ))}
-        </div>
-        <div style={{ fontSize:10,color:"#4b5563",marginTop:8,textAlign:"center" }}>タップするとその月の誕生花で花束を作れます · 365日対応は近日公開予定</div>
-      </div>
-
-      {/* Custom flower upload */}
-      <div style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 16px",marginBottom:14 }}>
-        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
-          <div style={{ fontSize:12,fontWeight:700,color:"#e879f9" }}>🌸 マイ花素材（描いた花・デコ画像）</div>
-          <CustomFlowerUpload onAdd={onAddCustomFlower}/>
-        </div>
-        {customFlowers.length===0 ? (
-          <div style={{ fontSize:11,color:"#4b5563",textAlign:"center",padding:"8px 0" }}>
-            アイビスペイントで描いた花やデコをアップロードして花束に使えます
-          </div>
-        ) : (
-          <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-            {customFlowers.map(f=>(
-              <div key={f.id} style={{ position:"relative",width:52,height:52,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)" }}>
-                <img src={f.image} alt={f.name} style={{ width:"100%",height:"100%",objectFit:"contain",background:"rgba(255,255,255,0.03)" }}/>
-                <div style={{ position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.6)",fontSize:7,color:"#fff",textAlign:"center",padding:"1px 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{f.name}</div>
-                <button onClick={()=>onDeleteCustomFlower(f.id)} style={{ position:"absolute",top:1,right:1,width:14,height:14,borderRadius:"50%",border:"none",background:"rgba(239,68,68,0.8)",color:"#fff",fontSize:8,cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900 }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display:"flex",gap:6,marginBottom:14 }}>
-        {[["saved",`💐 保存した花束 (${bouquets.length})`]].map(([t,l])=>(
-          <button key={t} onClick={()=>setBirthTab(t)} style={{ padding:"6px 14px",borderRadius:20,border:`1px solid ${birthTab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`,background:birthTab===t?"rgba(232,121,249,0.15)":"transparent",color:birthTab===t?"#e879f9":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer" }}>{l}</button>
-        ))}
-      </div>
-
-      {bouquets.length===0 ? (
-        <div style={{ textAlign:"center",padding:"40px 20px",color:"#6b7280" }}>
-          <div style={{ fontSize:40,marginBottom:10 }}>💐</div>
-          <div style={{ fontSize:14,fontWeight:700,marginBottom:6 }}>まだ花束がありません</div>
-          <div style={{ fontSize:12,opacity:0.5 }}>上の誕生花カレンダーか「＋ 花束を作る」から作ってみよう</div>
-        </div>
-      ) : (
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10 }}>
-          {bouquets.map(b=>(
-            <div key={b.id} style={{ background:"rgba(255,255,255,0.04)",borderRadius:14,border:"1px solid rgba(255,255,255,0.07)",overflow:"hidden" }}>
-              <div style={{ height:150,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.2)",position:"relative",cursor:"pointer" }} onClick={()=>setPreviewBouquet(b)}>
-                <BouquetPreview bouquet={b} size={110}/>
-                <div style={{ position:"absolute",top:6,right:6,fontSize:9,background:"rgba(0,0,0,0.5)",color:"#9ca3af",borderRadius:6,padding:"1px 5px" }}>タップで拡大</div>
-              </div>
-              <div style={{ padding:"10px 12px" }}>
-                <div style={{ fontSize:12,fontWeight:700,color:"#f0e8ff",marginBottom:2 }}>{b.name}</div>
-                <div style={{ fontSize:10,color:"#7c6a9a",marginBottom:8 }}>
-                  {b.flowers.map(f=>FLOWERS.find(fl=>fl.id===f.id)?.emoji||"🌸").join("")} {b.flowers.reduce((a,f)=>a+f.count,0)}本
-                </div>
-                <div style={{ display:"flex",gap:5 }}>
-                  <button onClick={()=>{ onPlace(b); onGoAltar(); }} style={{ flex:1,padding:"5px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer" }}>⛩ 祭壇へ</button>
-                  <button onClick={()=>onDelete(b.id)} style={{ width:28,borderRadius:8,border:"none",background:"rgba(239,68,68,0.15)",color:"#ef4444",fontSize:12,cursor:"pointer" }}>🗑</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showBuilder && <BouquetBuilder isPro={isPro} purchasedMaterials={purchasedMaterials} customFlowers={customFlowers} preset={showBuilder.preset} onSave={(b)=>{ onSave(b); setShowBuilder(false); }} onClose={()=>setShowBuilder(false)}/>}
-      {previewBouquet && (
-        <div style={S.overlay} onClick={()=>setPreviewBouquet(null)}>
-          <div style={{ background:"#110d20",borderRadius:20,padding:24,textAlign:"center",border:"1px solid rgba(232,121,249,0.2)" }} onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:15,fontWeight:800,color:"#f0e8ff",marginBottom:12 }}>{previewBouquet.name}</div>
-            <BouquetPreview bouquet={previewBouquet} size={220}/>
-            <button onClick={()=>setPreviewBouquet(null)} style={{ marginTop:16,padding:"8px 24px",borderRadius:20,border:"none",background:"rgba(255,255,255,0.08)",color:"#9ca3af",cursor:"pointer" }}>閉じる</button>
-          </div>
-        </div>
-      )}
-    </main>
-  );
-}
-
-// ─── Bouquet Preview ──────────────────────────────────────────
-// Renders a bouquet as a visual SVG-like arrangement using emoji
-function BouquetPreview({ bouquet, size=100 }) {
-  const { flowers=[], ribbonColor="", wrapStyle="wrap_round" } = bouquet;
-  const ribbon = RIBBON_COLORS.find(r=>r.id===ribbonColor)||RIBBON_COLORS[0];
-
-  // Expand flowers into individual items
-  const items = [];
-  flowers.forEach(f=>{ const fl=FLOWERS.find(fl=>fl.id===f.id); if(fl) for(let i=0;i<f.count;i++) items.push(fl); });
-  if (!items.length) return <div style={{ fontSize:48 }}>💐</div>;
-
-  const total = items.length;
-  const fontSize = Math.max(12, Math.min(28, size/(Math.ceil(Math.sqrt(total))*1.4)));
-
-  // Arrange in a fan/circle based on wrapStyle
-  const getPos = (i, total, style) => {
-    const cx = size/2, cy = size*0.42;
-    if (style==="wrap_round") {
-      // circular arrangement
-      const angle = (i/total)*Math.PI*2 - Math.PI/2;
-      const r = size*0.22*(1+total*0.02);
-      return { x: cx+Math.cos(angle)*r, y: cy+Math.sin(angle)*r*0.75 };
-    } else if (style==="wrap_cascade") {
-      // waterfall — flowers drape down on one side
-      const col = i%3, row = Math.floor(i/3);
-      return { x: cx-20+(col*18), y: cy-30+(row*16) };
-    } else {
-      // posy — tight cluster
-      const angle = (i/total)*Math.PI*2;
-      const r = size*0.14*(1+i*0.015);
-      return { x: cx+Math.cos(angle)*r, y: cy+Math.sin(angle)*r*0.7 };
-    }
-  };
-
-  return (
-    <div style={{ width:size,height:size,position:"relative",display:"inline-block" }}>
-      {/* Wrap paper */}
-      <div style={{ position:"absolute",bottom:size*0.05,left:"50%",transform:"translateX(-50%)",width:size*0.45,height:size*0.38,background:`linear-gradient(160deg,${ribbon.color}22,${ribbon.color}44)`,borderRadius:`${size*0.04}px ${size*0.04}px ${size*0.08}px ${size*0.08}px`,border:`1px solid ${ribbon.color}55` }}/>
-      {/* Ribbon */}
-      <div style={{ position:"absolute",bottom:size*0.12,left:"50%",transform:"translateX(-50%)",fontSize:fontSize*0.8 }}>🎀</div>
-      {/* Stem */}
-      <div style={{ position:"absolute",bottom:size*0.05,left:"50%",transform:"translateX(-50%)",width:3,height:size*0.25,background:"#4ade80",borderRadius:2 }}/>
-      {/* Flowers */}
-      {items.slice(0,16).map((fl,i)=>{
-        const pos = getPos(i, Math.min(total,16), wrapStyle);
-        return (
-          <div key={i} style={{ position:"absolute",left:pos.x,top:pos.y,transform:"translate(-50%,-50%)",fontSize,lineHeight:1,zIndex:i+1,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}>
-            {fl.isCustom && fl.customImage
-              ? <img src={fl.customImage} alt="" style={{ width:fontSize,height:fontSize,objectFit:"contain" }}/>
-              : fl.emoji}
-          </div>
-        );
-      })}
-      {total>16&&<div style={{ position:"absolute",bottom:2,right:2,fontSize:9,color:"#9ca3af" }}>+{total-16}</div>}
-    </div>
-  );
-}
-
-// ─── Bouquet Builder Modal ────────────────────────────────────
-function BouquetBuilder({ isPro, purchasedMaterials, customFlowers=[], onSave, onClose, preset }) {
-  const [name, setName]           = useState(preset?.name||"推しへの花束");
-  const [selectedFlowers, setSelectedFlowers] = useState(preset?.flowers||[]); // [{id, count}]
-  const [ribbonColor, setRibbonColor] = useState(preset?.ribbonColor||"rb_pink");
-  const [wrapStyle, setWrapStyle]   = useState(preset?.wrapStyle||"wrap_round");
-  const [tab, setTab]               = useState("flowers");
-  const [error, setError]           = useState("");
-
-  const canUseFlower = (f) => f.free || isPro || purchasedMaterials.includes(f.id);
-
-  const setCount = (id, delta, customImage) => {
-    setSelectedFlowers(prev=>{
-      const ex = prev.find(f=>f.id===id);
-      if (!ex && delta>0) return [...prev,{id,count:1,...(customImage?{customImage}:{})}];
-      if (!ex) return prev;
-      const newCount = ex.count+delta;
-      if (newCount<=0) return prev.filter(f=>f.id!==id);
-      return prev.map(f=>f.id===id?{...f,count:newCount}:f);
-    });
-  };
-
-  const totalFlowers = selectedFlowers.reduce((a,f)=>a+f.count,0);
-
-  const preview = { id:newUid(), name, flowers:selectedFlowers, ribbonColor, wrapStyle, createdAt:new Date().toISOString() };
-
-  const submit = () => {
-    if (!selectedFlowers.length) { setError("花を1種類以上選んでください"); return; }
-    if (!name.trim()) { setError("花束の名前を入力してください"); return; }
-    onSave(preview);
-  };
-
-  return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={{ ...S.modal,maxWidth:520 }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
-          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>💐 花束を作る</div>
-          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
-        </div>
-
-        {/* Preview */}
-        <div style={{ display:"flex",alignItems:"center",gap:16,padding:"12px 14px",background:"rgba(255,255,255,0.03)",borderRadius:12,marginBottom:14,border:"1px solid rgba(255,255,255,0.07)" }}>
-          <BouquetPreview bouquet={preview} size={100}/>
-          <div style={{ flex:1 }}>
-            <input value={name} onChange={e=>setName(e.target.value)} placeholder="花束の名前" style={{ ...S.input,fontSize:14,fontWeight:700,marginBottom:6 }} maxLength={30}/>
-            <div style={{ fontSize:11,color:"#7c6a9a" }}>
-              {totalFlowers>0 ? `${selectedFlowers.map(f=>{ const fl=FLOWERS.find(fl=>fl.id===f.id); return `${fl?.emoji}×${f.count}`; }).join(" ")} 合計${totalFlowers}本` : "花を選んでください"}
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display:"flex",gap:6,marginBottom:12 }}>
-          {[["flowers","🌸 花を選ぶ"],["ribbon","🎀 リボン"],["wrap","💐 スタイル"]].map(([t,l])=>(
-            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:"6px",borderRadius:10,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:11,fontWeight:700,cursor:"pointer" }}>{l}</button>
-          ))}
-        </div>
-
-        {/* Flowers tab */}
-        {tab==="flowers" && (
-          <div style={{ maxHeight:280,overflowY:"auto" }}>
-            {!isPro&&<div style={{ fontSize:10,color:"#7c6a9a",marginBottom:8,padding:"6px 10px",background:"rgba(192,132,252,0.06)",borderRadius:8 }}>👑 PROプランで全ての花が使えます</div>}
-
-            {/* Custom uploaded flowers */}
-            {customFlowers.length>0&&(
-              <div style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10,fontWeight:700,color:"#e879f9",marginBottom:6 }}>🌸 マイ花素材</div>
-                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
-                  {customFlowers.map(fl=>{
-                    const sel=selectedFlowers.find(f=>f.id===`custom_${fl.id}`);
-                    const cnt=sel?.count||0;
-                    return (
-                      <div key={fl.id} style={{ background:cnt>0?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 6px",border:`1px solid ${cnt>0?"rgba(232,121,249,0.3)":"rgba(255,255,255,0.06)"}`,textAlign:"center" }}>
-                        <img src={fl.image} alt={fl.name} style={{ width:40,height:40,objectFit:"contain",marginBottom:3 }}/>
-                        <div style={{ fontSize:10,fontWeight:700,color:cnt>0?"#e879f9":"#d1d5db",marginBottom:4 }}>{fl.name}</div>
-                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
-                          <button onClick={()=>setCount(`custom_${fl.id}`,-1,fl.image)} disabled={cnt===0} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:cnt>0?"rgba(232,121,249,0.2)":"rgba(255,255,255,0.05)",color:cnt>0?"#e879f9":"#4b5563",fontSize:12,cursor:cnt>0?"pointer":"default",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
-                          <span style={{ fontSize:12,fontWeight:700,color:cnt>0?"#e879f9":"#6b7280",width:16,textAlign:"center" }}>{cnt}</span>
-                          <button onClick={()=>setCount(`custom_${fl.id}`,+1,fl.image)} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:"rgba(232,121,249,0.2)",color:"#e879f9",fontSize:12,cursor:"pointer",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>＋</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ height:1,background:"rgba(255,255,255,0.07)",margin:"10px 0" }}/>
-              </div>
-            )}
-
-            <div style={{ fontSize:10,fontWeight:700,color:"#7c6a9a",marginBottom:6 }}>🌸 プリセット花</div>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
-              {FLOWERS.map(fl=>{
-                const sel = selectedFlowers.find(f=>f.id===fl.id);
-                const cnt = sel?.count||0;
-                const unlocked = canUseFlower(fl);
-                return (
-                  <div key={fl.id} style={{ background:cnt>0?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 6px",border:`1px solid ${cnt>0?"rgba(232,121,249,0.3)":"rgba(255,255,255,0.06)"}`,opacity:unlocked?1:0.5,textAlign:"center" }}>
-                    <div style={{ fontSize:24,marginBottom:3 }}>{fl.emoji}</div>
-                    <div style={{ fontSize:10,fontWeight:700,color:cnt>0?"#e879f9":"#d1d5db",marginBottom:4 }}>{fl.name}</div>
-                    {!unlocked ? (
-                      <div style={{ fontSize:9,color:"#c084fc" }}>👑 PRO</div>
-                    ) : (
-                      <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
-                        <button onClick={()=>setCount(fl.id,-1)} disabled={cnt===0} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:cnt>0?"rgba(232,121,249,0.2)":"rgba(255,255,255,0.05)",color:cnt>0?"#e879f9":"#4b5563",fontSize:12,cursor:cnt>0?"pointer":"default",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
-                        <span style={{ fontSize:12,fontWeight:700,color:cnt>0?"#e879f9":"#6b7280",width:16,textAlign:"center" }}>{cnt}</span>
-                        <button onClick={()=>setCount(fl.id,+1)} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:"rgba(232,121,249,0.2)",color:"#e879f9",fontSize:12,cursor:"pointer",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>＋</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Ribbon tab */}
-        {tab==="ribbon" && (
-          <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",padding:"8px 0" }}>
-            {RIBBON_COLORS.map(r=>(
-              <button key={r.id} onClick={()=>setRibbonColor(r.id)}
-                style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"8px 10px",borderRadius:12,border:`2px solid ${ribbonColor===r.id?r.color:"transparent"}`,background:ribbonColor===r.id?`${r.color}18`:"rgba(255,255,255,0.03)",cursor:"pointer" }}>
-                <div style={{ width:28,height:28,borderRadius:"50%",background:r.color,boxShadow:`0 2px 8px ${r.color}66` }}/>
-                <div style={{ fontSize:10,color:ribbonColor===r.id?r.color:"#9ca3af",fontWeight:ribbonColor===r.id?700:400 }}>{r.name}</div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Wrap style tab */}
-        {tab==="wrap" && (
-          <div style={{ display:"flex",flexDirection:"column",gap:8,padding:"4px 0" }}>
-            {WRAP_STYLES.map(w=>(
-              <button key={w.id} onClick={()=>setWrapStyle(w.id)}
-                style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:`2px solid ${wrapStyle===w.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.08)"}`,background:wrapStyle===w.id?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",cursor:"pointer",textAlign:"left" }}>
-                <div style={{ width:60,height:60,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                  <BouquetPreview bouquet={{ flowers:[{id:"fl_rose",count:3},{id:"fl_daisy",count:2}], ribbonColor:"rb_pink", wrapStyle:w.id, name:"" }} size={56}/>
-                </div>
-                <div>
-                  <div style={{ fontSize:13,fontWeight:700,color:wrapStyle===w.id?"#e879f9":"#f0e8ff" }}>{w.name}</div>
-                  <div style={{ fontSize:11,color:"#7c6a9a",marginTop:2 }}>{w.desc}</div>
-                </div>
-                {wrapStyle===w.id&&<div style={{ marginLeft:"auto",color:"#e879f9",fontWeight:700 }}>✓</div>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {error&&<div style={{ color:"#f87171",fontSize:12,margin:"8px 0",fontWeight:600 }}>{error}</div>}
-
-        <button onClick={submit} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:totalFlowers>0?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.08)",color:totalFlowers>0?"#fff":"#4b5563",fontSize:15,fontWeight:800,cursor:totalFlowers>0?"pointer":"default",marginTop:12 }}>
-          {totalFlowers>0?`💐 この花束を保存する`:"花を選んでください"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -2048,7 +1491,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
-        {!viewingShared&&<button onClick={()=>setPage("bouquet")} style={{ ...S.modeBtn,border:"1px solid rgba(251,191,36,0.3)",color:"#fbbf24" }}>💐 花束</button>}
         {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
@@ -3267,12 +2709,6 @@ function FlatStage({ flatShelf, template, goodById, isDark, viewingShared, dragS
 // Renders deco stickers on top of altar (both shelf and free modes)
 function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDeco, onStartDrag, onSelect, onScale, onRemove }) {
   if (!decoItems?.length) return null;
-  // Helper to render a bouquet deco item
-  const BouquetDecoItem = ({item,isSel,isDragging}) => {
-    const b = item.bouquetData;
-    if (!b) return <div style={{ fontSize:36 }}>💐</div>;
-    return <BouquetPreview bouquet={b} size={80}/>;
-  };
   const DECO_ANIMS = {
     dc_ribbon: "decoRibbon 1.5s ease-in-out infinite alternate",
     dc_light:  "decoLight 1.2s ease-in-out infinite alternate",
@@ -3289,9 +2725,8 @@ function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDec
       `}</style>
       {decoItems.map(item=>{
         const isCustom  = item.materialId==="custom";
-        const isBouquet = item.materialId==="bouquet";
-        const mat = isBouquet ? {id:"bouquet",emoji:"💐",animated:false} : isCustom ? {id:"custom",emoji:"🖼️",animated:false} : MATERIALS.find(m=>m.id===item.materialId);
-        if (!mat && !isCustom && !isBouquet) return null;
+        const mat = isCustom ? {id:"custom",emoji:"🖼️",animated:false} : MATERIALS.find(m=>m.id===item.materialId);
+        if (!mat && !isCustom) return null;
         const isSel = selectedDeco===item.id;
         const isDragging = draggingDeco===item.id;
         const anim = mat.animated ? DECO_ANIMS[mat.id] : undefined;
@@ -3313,9 +2748,7 @@ function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDec
               transition:isDragging?"none":"filter 0.2s",
               userSelect:"none",
             }}>
-            {isBouquet
-              ? <BouquetDecoItem item={item} isSel={isSel} isDragging={isDragging}/>
-              : isCustom && item.customImage
+            {isCustom && item.customImage
               ? <img src={item.customImage} alt={item.customName||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
               : mat?.image
               ? <img src={mat.image} alt={mat.name||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
