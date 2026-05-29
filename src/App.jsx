@@ -7,10 +7,33 @@ const STORAGE_KEY = "saidan-v4";
 const SUPABASE_URL  = "https://gwkkyoqgcahyzasngaje.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3a2t5b3FnY2FoeXphc25nYWplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzI2NTEsImV4cCI6MjA5NTYwODY1MX0.fJRKEQLEY3IP90AJkWStDUUbrUif7lwA8hH9ztS6IUo";
 
-async function sbFetch(path, options={}) {
+async function refreshSession() {
   const session = JSON.parse(localStorage.getItem("saidan_session")||"null");
-  const headers = { "Content-Type":"application/json", "apikey":SUPABASE_ANON, "Authorization":`Bearer ${session?.access_token||SUPABASE_ANON}`, ...options.headers };
-  const res = await fetch(SUPABASE_URL+path, {...options, headers});
+  if (!session?.refresh_token) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method:"POST", headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON},
+      body: JSON.stringify({refresh_token: session.refresh_token})
+    });
+    const data = await res.json();
+    if (data.error || !data.access_token) return null;
+    localStorage.setItem("saidan_session", JSON.stringify(data));
+    return data;
+  } catch { return null; }
+}
+
+async function sbFetch(path, options={}) {
+  let session = JSON.parse(localStorage.getItem("saidan_session")||"null");
+  let headers = { "Content-Type":"application/json", "apikey":SUPABASE_ANON, "Authorization":`Bearer ${session?.access_token||SUPABASE_ANON}`, ...options.headers };
+  let res = await fetch(SUPABASE_URL+path, {...options, headers});
+  // トークン切れなら自動更新して再試行
+  if (res.status === 401 && session?.refresh_token) {
+    const newSession = await refreshSession();
+    if (newSession) {
+      headers = { ...headers, "Authorization":`Bearer ${newSession.access_token}` };
+      res = await fetch(SUPABASE_URL+path, {...options, headers});
+    }
+  }
   if (!res.ok) { const e=await res.text(); throw new Error(e); }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -339,7 +362,7 @@ export default function App() {
         // Also save to cloud if logged in (non-fatal — failure is silently ignored)
         const sess = getSession();
         if (sess?.user?.id) {
-          try { await saveToCloud(sess.user.id, data); } catch {}
+          try { await saveToCloud(sess.user.id, data); } catch(e) { console.error("Auto-save cloud error:", e); }
         }
         setSaveStatus("saved"); setTimeout(()=>setSaveStatus(null),2000);
       } catch { setSaveStatus("error"); setTimeout(()=>setSaveStatus(null),3000); }
@@ -452,6 +475,17 @@ export default function App() {
           <button onClick={()=>isPro?downgradeToFree():setShowUpgrade(true)} style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${isPro?"#f59e0b":"rgba(255,255,255,0.15)"}`, background:isPro?"rgba(245,158,11,0.15)":"transparent", color:isPro?"#f59e0b":"#6b7280", fontSize:11, fontWeight:700, cursor:"pointer" }}>
             {isPro?"👑":"FREE"}
           </button>
+          {/* Cloud sync button (logged in only) */}
+          {session && <button onClick={async()=>{
+            showToast("☁ 同期中…");
+            try {
+              const cloudData = await loadFromCloud(session.user.id);
+              if (cloudData) { applyData(cloudData); showToast("✓ 同期しました"); }
+              else { showToast("クラウドにデータがありません"); }
+            } catch(e) { showToast("同期エラー: "+(e?.message||String(e))); }
+          }} style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(99,102,241,0.4)",background:"rgba(99,102,241,0.1)",color:"#818cf8",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+            ☁ 同期
+          </button>}
           {/* Auth button */}
           <button onClick={()=>session?setShowAuth("account"):setShowAuth("login")}
             style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(255,255,255,0.12)",background:"transparent",color:session?"#4ade80":"#6b7280",fontSize:11,fontWeight:700,cursor:"pointer" }}>
@@ -550,7 +584,8 @@ export default function App() {
               showToast("✓ ログインしました");
             }
           } catch(e) {
-            showToast("ログインしました（同期エラー）");
+            console.error("Cloud sync error:", e);
+            showToast("同期エラー: " + (e?.message||String(e)));
           }
         }}
         onLogout={async()=>{
