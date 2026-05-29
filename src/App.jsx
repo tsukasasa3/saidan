@@ -1502,7 +1502,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
-        {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor?" ✓":""}</button>}
+        {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor||altar.customColors?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor||altar.customColors?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor||altar.customColors?" ✓":""}</button>}
         {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
@@ -1796,36 +1796,69 @@ function LightOverlay({ materialId }) {
 
 // ─── Bg Modal ─────────────────────────────────────────────────
 function BgModal({ altar, onUpdateAltar, onClose }) {
+  const [bgTab, setBgTab] = useState(altar.customColors?"custom":altar.bgCustomColor?"solid":"solid");
+
+  // ── 単色タブ state ──
   const [colorInput, setColorInput] = useState(altar.bgCustomColor||"#1a0a2e");
-
   const PRESET_COLORS = [
-    { hex:"#0c0a14", name:"ディープブラック" },
-    { hex:"#1a0a2e", name:"ミッドナイト" },
-    { hex:"#0a1628", name:"ネイビー" },
-    { hex:"#1a0505", name:"ダークレッド" },
-    { hex:"#052e16", name:"フォレスト" },
-    { hex:"#1c1000", name:"ディープゴールド" },
-    { hex:"#fdf2f8", name:"パステルピンク" },
-    { hex:"#f0f4ff", name:"ライトブルー" },
-    { hex:"#fffbeb", name:"クリーム" },
-    { hex:"#f5f5f5", name:"ホワイト" },
-    { hex:"#2d1b69", name:"パープル" },
-    { hex:"#134e4a", name:"ティール" },
+    { hex:"#0c0a14", name:"ディープブラック" }, { hex:"#1a0a2e", name:"ミッドナイト" },
+    { hex:"#0a1628", name:"ネイビー" },         { hex:"#1a0505", name:"ダークレッド" },
+    { hex:"#052e16", name:"フォレスト" },        { hex:"#1c1000", name:"ディープゴールド" },
+    { hex:"#fdf2f8", name:"パステルピンク" },    { hex:"#f0f4ff", name:"ライトブルー" },
+    { hex:"#fffbeb", name:"クリーム" },          { hex:"#f5f5f5", name:"ホワイト" },
+    { hex:"#2d1b69", name:"パープル" },          { hex:"#134e4a", name:"ティール" },
   ];
-
   const applyCustomColor = (hex) => {
-    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-      onUpdateAltar({ bgCustomColor: hex, bgMaterialId: null });
-    }
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) onUpdateAltar({ bgCustomColor: hex, bgMaterialId: null });
   };
-  const clearCustomColor = () => { onUpdateAltar({ bgCustomColor: null }); };
-  const isCustomColorActive = !!altar.bgCustomColor;
+  const clearCustomColor = () => onUpdateAltar({ bgCustomColor: null });
 
+  // ── カスタムカラータブ state ──
+  const baseTemplate = TEMPLATES.find(t=>t.id===altar.templateId)||TEMPLATES[0];
+  const merged = altar.customColors ? {...baseTemplate,...altar.customColors} : baseTemplate;
+  const [bgTop,  setBgTop]  = useState(merged.bg.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#0c0a14");
+  const [bgBot,  setBgBot]  = useState(merged.bg.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#1a0f2e");
+  const [accent, setAccent] = useState(merged.accent);
+  const [plankTop,  setPlankTop]  = useState(merged.plank.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#3d2060");
+  const [plankBot,  setPlankBot]  = useState(merged.plank.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#2a1540");
+  const [isDarkMode,setIsDarkMode]= useState(merged.dark!==false);
+  const hexInput = (label,val,set) => (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ fontSize:11,color:"#7c6a9a",marginBottom:5,fontWeight:600 }}>{label}</div>
+      <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+        <input type="color" value={val} onChange={e=>set(e.target.value)} style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"rgba(255,255,255,0.05)" }}/>
+        <input type="text"  value={val} onChange={e=>{ if(/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) set(e.target.value); }} maxLength={7} placeholder="#000000" style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+      </div>
+    </div>
+  );
+  const applyCustom = () => {
+    onUpdateAltar({
+      customColors:{ bg:`linear-gradient(180deg,${bgTop},${bgBot})`, accent, gold:accent, floor:`${accent}14`, border:`${accent}55`, plank:`linear-gradient(180deg,${plankTop},${plankBot})`, dark:isDarkMode },
+      bgCustomColor: null,
+    });
+  };
+  const clearCustomColors = () => {
+    onUpdateAltar({ customColors: null });
+    // reset local state to base template
+    setBgTop( baseTemplate.bg.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#0c0a14");
+    setBgBot( baseTemplate.bg.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#1a0f2e");
+    setAccent(baseTemplate.accent);
+    setPlankTop(baseTemplate.plank.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#3d2060");
+    setPlankBot(baseTemplate.plank.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#2a1540");
+    setIsDarkMode(baseTemplate.dark!==false);
+  };
+
+  // ── アニメ背景タブ ──
   const bgItems = MATERIALS.filter(m=>m.type==="bg");
-  const isActive = (mat) => altar.bgMaterialId===mat.id;
-  const toggle = (mat) => {
+  const isBgMatActive = (mat) => altar.bgMaterialId===mat.id;
+  const toggleBgMat = (mat) => {
     onUpdateAltar({ bgMaterialId: altar.bgMaterialId===mat.id?null:mat.id, bgCustomColor: null });
   };
+
+  const TABS = [["solid","🎨 単色"],["custom","✏ カスタム"],["anim","🌈 アニメ"]];
+  const hasActiveSolid  = !!altar.bgCustomColor;
+  const hasActiveCustom = !!altar.customColors;
+  const hasActiveAnim   = !!altar.bgMaterialId;
 
   return (
     <div style={S.overlay} onClick={onClose}>
@@ -1835,54 +1868,98 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
 
-        {/* Single color picker */}
-        <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${isCustomColorActive?"#22c55e":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10 }}>
-            <span style={{ fontSize:13,fontWeight:700,color:isCustomColorActive?"#22c55e":"#f0e8ff" }}>🎨 単色背景</span>
-            <span style={{ fontSize:9,background:"rgba(34,197,94,0.2)",color:"#22c55e",borderRadius:6,padding:"1px 6px",fontWeight:700 }}>無料・静止</span>
-            {isCustomColorActive&&<button onClick={clearCustomColor} style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ 解除</button>}
-          </div>
-          {/* Preset swatches */}
-          <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
-            {PRESET_COLORS.map(c=>(
-              <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
-                style={{ width:28,height:28,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.15)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
-                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
-                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
-              />
-            ))}
-          </div>
-          {/* Custom hex input */}
-          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-            <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
-              style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
-            <input type="text" value={colorInput}
-              onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
-              placeholder="#000000" maxLength={7}
-              style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
-            <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
-          </div>
-        </div>
-
-        {/* Animated bg materials */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,maxHeight:280,overflowY:"auto" }}>
-          {bgItems.map(mat=>{
-            const active = isActive(mat);
+        {/* Tabs */}
+        <div style={{ display:"flex",gap:6,marginBottom:14 }}>
+          {TABS.map(([t,l])=>{
+            const hasActive = t==="solid"?hasActiveSolid:t==="custom"?hasActiveCustom:hasActiveAnim;
             return (
-              <div key={mat.id} onClick={()=>toggle(mat)}
-                style={{ borderRadius:12,padding:"12px 8px",textAlign:"center",cursor:"pointer",transition:"all 0.2s",position:"relative",
-                  background:active?"rgba(129,140,248,0.2)":"rgba(255,255,255,0.04)",
-                  border:`2px solid ${active?"#818cf8":"rgba(255,255,255,0.08)"}` }}>
-                {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#818cf8",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
-                {mat.image
-                  ? <img src={mat.image} alt={mat.name} style={{ width:44,height:44,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px" }}/>
-                  : <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>}
-                <div style={{ fontSize:11,fontWeight:700,color:active?"#818cf8":"#f0e8ff" }}>{mat.name}</div>
-                <div style={{ fontSize:9,color:"#7c6a9a",marginTop:2 }}>{mat.desc}</div>
-              </div>
+              <button key={t} onClick={()=>setBgTab(t)}
+                style={{ flex:1,padding:"7px 4px",borderRadius:10,border:`1px solid ${bgTab===t?"rgba(129,140,248,0.5)":hasActive?"rgba(129,140,248,0.25)":"rgba(255,255,255,0.08)"}`,background:bgTab===t?"rgba(129,140,248,0.18)":"transparent",color:bgTab===t?"#818cf8":hasActive?"#a5b4fc":"#9ca3af",fontSize:11,fontWeight:700,cursor:"pointer",position:"relative" }}>
+                {hasActive&&<span style={{ position:"absolute",top:3,right:5,fontSize:8,color:"#818cf8" }}>✓</span>}
+                {l}
+              </button>
             );
           })}
         </div>
+
+        {/* ── 単色タブ ── */}
+        {bgTab==="solid"&&(
+          <div>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
+              {PRESET_COLORS.map(c=>(
+                <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
+                  style={{ width:32,height:32,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.12)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
+                  onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
+                  onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}/>
+              ))}
+            </div>
+            <div style={{ display:"flex",gap:8,alignItems:"center",marginBottom:12 }}>
+              <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
+                style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
+              <input type="text" value={colorInput}
+                onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
+                placeholder="#000000" maxLength={7}
+                style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+              <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+            </div>
+            {hasActiveSolid&&(
+              <button onClick={clearCustomColor} style={{ width:"100%",padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,cursor:"pointer" }}>✕ 単色を解除</button>
+            )}
+          </div>
+        )}
+
+        {/* ── カスタムカラータブ ── */}
+        {bgTab==="custom"&&(<>
+          {/* preview */}
+          <div style={{ background:`linear-gradient(180deg,${bgTop},${bgBot})`,borderRadius:12,height:64,border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:accent,letterSpacing:1,position:"relative",overflow:"hidden",marginBottom:14 }}>
+            <div style={{ position:"absolute",bottom:0,left:0,right:0,height:"35%",background:`${accent}14` }}/>
+            <div style={{ position:"absolute",bottom:"33%",left:"10%",right:"10%",height:5,background:`linear-gradient(180deg,${plankTop},${plankBot})`,borderRadius:3 }}/>
+            <span style={{ position:"relative",zIndex:1 }}>⛩ プレビュー</span>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px" }}>
+            {hexInput("背景（上）",bgTop,setBgTop)}
+            {hexInput("背景（下）",bgBot,setBgBot)}
+            {hexInput("アクセントカラー",accent,setAccent)}
+            {hexInput("棚カラー（上）",plankTop,setPlankTop)}
+            {hexInput("棚カラー（下）",plankBot,setPlankBot)}
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",background:"rgba(255,255,255,0.04)",borderRadius:10 }}>
+            <span style={{ fontSize:12,color:"#9ca3af",flex:1 }}>ダークモード（テキストを白にする）</span>
+            <button onClick={()=>setIsDarkMode(d=>!d)} style={{ width:42,height:24,borderRadius:12,border:"none",background:isDarkMode?"#818cf8":"rgba(255,255,255,0.1)",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+              <div style={{ width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:isDarkMode?21:3,transition:"left 0.2s" }}/>
+            </button>
+          </div>
+          <div style={{ display:"flex",gap:8 }}>
+            {hasActiveCustom&&(
+              <button onClick={clearCustomColors}
+                style={{ flex:1,padding:"10px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer" }}>🔄 リセット</button>
+            )}
+            <button onClick={applyCustom}
+              style={{ flex:2,padding:"10px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#818cf8,#6366f1)",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer" }}>✓ このカラーで適用</button>
+          </div>
+        </>)}
+
+        {/* ── アニメ背景タブ ── */}
+        {bgTab==="anim"&&(
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8 }}>
+            {bgItems.map(mat=>{
+              const active = isBgMatActive(mat);
+              return (
+                <div key={mat.id} onClick={()=>toggleBgMat(mat)}
+                  style={{ borderRadius:12,padding:"12px 8px",textAlign:"center",cursor:"pointer",transition:"all 0.2s",position:"relative",
+                    background:active?"rgba(129,140,248,0.2)":"rgba(255,255,255,0.04)",
+                    border:`2px solid ${active?"#818cf8":"rgba(255,255,255,0.08)"}` }}>
+                  {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#818cf8",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
+                  {mat.image
+                    ? <img src={mat.image} alt={mat.name} style={{ width:44,height:44,objectFit:"contain",display:"block",margin:"0 auto 4px" }}/>
+                    : <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>}
+                  <div style={{ fontSize:11,fontWeight:700,color:active?"#818cf8":"#f0e8ff" }}>{mat.name}</div>
+                  <div style={{ fontSize:9,color:"#7c6a9a",marginTop:2 }}>{mat.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2176,70 +2253,26 @@ function UpgradeModal({ onUpgrade, onClose, plan }) {
 
 // ─── Template Modal ───────────────────────────────────────────
 function TemplateModal({ current, customColors, onSelect, onClose }) {
-  const [tab,setTab]=useState("preset");
-  const baseTemplate=TEMPLATES.find(t=>t.id===current)||TEMPLATES[0];
-  const merged=customColors?{...baseTemplate,...customColors}:baseTemplate;
-  const [bgTop,setBgTop]=useState(merged.bg.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#0c0a14");
-  const [bgBot,setBgBot]=useState(merged.bg.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#1a0f2e");
-  const [accent,setAccent]=useState(merged.accent);
-  const [plankTop,setPlankTop]=useState(merged.plank.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#3d2060");
-  const [plankBot,setPlankBot]=useState(merged.plank.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#2a1540");
-  const [isDarkMode,setIsDarkMode]=useState(merged.dark!==false);
-  const hexInput=(label,val,set)=>(
-    <div style={{ marginBottom:10 }}>
-      <div style={{ fontSize:11,color:"#7c6a9a",marginBottom:5,fontWeight:600 }}>{label}</div>
-      <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-        <input type="color" value={val} onChange={e=>set(e.target.value)} style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"rgba(255,255,255,0.05)" }}/>
-        <input type="text" value={val} onChange={e=>{if(/^#[0-9a-fA-F]{0,6}$/.test(e.target.value))set(e.target.value);}} maxLength={7} placeholder="#000000" style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
-      </div>
-    </div>
-  );
-  const applyCustom=()=>onSelect(current,{bg:`linear-gradient(180deg,${bgTop},${bgBot})`,accent,gold:accent,floor:`${accent}14`,border:`${accent}55`,plank:`linear-gradient(180deg,${plankTop},${plankBot})`,dark:isDarkMode});
   return (
     <div style={S.overlay} onClick={onClose}>
-      <div style={{ ...S.modal,maxWidth:540 }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
-          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>テンプレート & カラー設定</div>
+      <div style={{ ...S.modal,maxWidth:500 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🎨 テンプレート</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ display:"flex",gap:8,marginBottom:16 }}>
-          {[["preset","🎨 プリセット"],["custom","✏ カスタムカラー"]].map(([t,l])=>(
-            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:"7px",borderRadius:10,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer" }}>{l}</button>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10 }}>
+          {TEMPLATES.map(t=>(
+            <button key={t.id} onClick={()=>onSelect(t.id,null)} style={{ background:t.bg,border:`2px solid ${current===t.id&&!customColors?t.accent:"transparent"}`,borderRadius:14,padding:"14px 8px",cursor:"pointer",textAlign:"center",transition:"all 0.2s",position:"relative",overflow:"hidden" }}>
+              {current===t.id&&!customColors&&<div style={{ position:"absolute",top:5,right:5,fontSize:9,background:t.accent,color:"#fff",borderRadius:20,padding:"1px 5px",fontWeight:700 }}>✓</div>}
+              <div style={{ fontSize:26,marginBottom:5 }}>{t.emoji}</div>
+              <div style={{ fontSize:12,fontWeight:800,color:t.dark===false?"#1a0030":"#f0e8ff" }}>{t.name}</div>
+              <div style={{ fontSize:9,color:t.accent,marginTop:2 }}>{t.desc}</div>
+            </button>
           ))}
         </div>
-        {tab==="preset"&&(
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10 }}>
-            {TEMPLATES.map(t=>(
-              <button key={t.id} onClick={()=>onSelect(t.id,null)} style={{ background:t.bg,border:`2px solid ${current===t.id&&!customColors?t.accent:"transparent"}`,borderRadius:14,padding:"14px 8px",cursor:"pointer",textAlign:"center",transition:"all 0.2s",position:"relative",overflow:"hidden" }}>
-                {current===t.id&&!customColors&&<div style={{ position:"absolute",top:5,right:5,fontSize:9,background:t.accent,color:"#fff",borderRadius:20,padding:"1px 5px",fontWeight:700 }}>✓</div>}
-                <div style={{ fontSize:26,marginBottom:5 }}>{t.emoji}</div>
-                <div style={{ fontSize:12,fontWeight:800,color:t.dark===false?"#1a0030":"#f0e8ff" }}>{t.name}</div>
-                <div style={{ fontSize:9,color:t.accent,marginTop:2 }}>{t.desc}</div>
-              </button>
-            ))}
-          </div>
-        )}
-        {tab==="custom"&&(<>
-          <div style={{ background:`linear-gradient(180deg,${bgTop},${bgBot})`,borderRadius:12,height:70,border:`2px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:accent,letterSpacing:1,position:"relative",overflow:"hidden",marginBottom:14 }}>
-            <div style={{ position:"absolute",bottom:0,left:0,right:0,height:"35%",background:`${accent}14` }}/>
-            <div style={{ position:"absolute",bottom:"33%",left:"10%",right:"10%",height:6,background:`linear-gradient(180deg,${plankTop},${plankBot})`,borderRadius:3 }}/>
-            <span style={{ position:"relative",zIndex:1 }}>⛩ プレビュー</span>
-          </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px" }}>
-            {hexInput("背景（上）",bgTop,setBgTop)}{hexInput("背景（下）",bgBot,setBgBot)}
-            {hexInput("アクセントカラー",accent,setAccent)}{hexInput("棚カラー（上）",plankTop,setPlankTop)}
-            {hexInput("棚カラー（下）",plankBot,setPlankBot)}
-          </div>
-          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16,padding:"10px 14px",background:"rgba(255,255,255,0.04)",borderRadius:10 }}>
-            <span style={{ fontSize:12,color:"#9ca3af",flex:1 }}>ダークモード（テキストを白にする）</span>
-            <button onClick={()=>setIsDarkMode(d=>!d)} style={{ width:42,height:24,borderRadius:12,border:"none",background:isDarkMode?"#e879f9":"rgba(255,255,255,0.1)",cursor:"pointer",position:"relative",transition:"background 0.2s" }}><div style={{ width:18,height:18,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:isDarkMode?21:3,transition:"left 0.2s" }}/></button>
-          </div>
-          <div style={{ display:"flex",gap:8 }}>
-            <button onClick={()=>{setBgTop(baseTemplate.bg.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#0c0a14");setBgBot(baseTemplate.bg.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#1a0f2e");setAccent(baseTemplate.accent);setPlankTop(baseTemplate.plank.match(/#[0-9a-f]{3,6}/gi)?.[0]||"#3d2060");setPlankBot(baseTemplate.plank.match(/#[0-9a-f]{3,6}/gi)?.[1]||"#2a1540");setIsDarkMode(baseTemplate.dark!==false);}}
-              style={{ flex:1,padding:"10px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer" }}>🔄 リセット</button>
-            <button onClick={applyCustom} style={{ flex:2,padding:"10px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer" }}>✓ このカラーで適用</button>
-          </div>
-        </>)}
+        <div style={{ marginTop:12,padding:"8px 12px",background:"rgba(129,140,248,0.06)",border:"1px solid rgba(129,140,248,0.15)",borderRadius:10,fontSize:11,color:"#a5b4fc",lineHeight:1.6 }}>
+          💡 背景の色やアクセントカラーを細かく変えたい場合は <strong style={{ color:"#818cf8" }}>🌌 背景 → ✏ カスタム</strong> から設定できます
+        </div>
       </div>
     </div>
   );
