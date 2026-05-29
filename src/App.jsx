@@ -2971,6 +2971,8 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
   const [memo,setMemo]           = useState("");
   const [characterId,setCharacterId] = useState(null);
   const [error,setError]         = useState("");
+  const [removingBg,setRemovingBg] = useState(false);
+  const [autoBgRemove,setAutoBgRemove] = useState(true);
   const fileRef = useRef(null);
 
   // Free plan emoji picker options
@@ -2979,7 +2981,23 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
   const handleFile = async(e) => {
     const f=e.target.files[0]; if(!f) return;
     if(f.size>5*1024*1024){setError("5MB以下にしてください");return;}
-    setImage(await readFileAsDataURL(f)); setError("");
+    if (autoBgRemove) {
+      setRemovingBg(true); setError("");
+      try {
+        const { removeBackground } = await import("@imgly/background-removal");
+        const blob = await removeBackground(f, { output: { format:"image/png", quality:1 } });
+        const dataUrl = await readFileAsDataURL(blob);
+        setImage(dataUrl);
+      } catch {
+        // 失敗したら元の画像をそのまま使う
+        setImage(await readFileAsDataURL(f));
+        setError("背景除去に失敗しました。元の画像で登録します。");
+      } finally {
+        setRemovingBg(false);
+      }
+    } else {
+      setImage(await readFileAsDataURL(f)); setError("");
+    }
   };
 
   const resolvedEmoji = emojiInput || "📦";
@@ -3056,8 +3074,20 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
         {/* Upload */}
         {imgMode==="upload" && (
           <>
-            <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:110,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",marginBottom:8,color:"#7c6a9a",overflow:"hidden" }} onClick={()=>fileRef.current?.click()}>
-              {image?<img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>:<><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>}
+            {/* 背景除去トグル */}
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,padding:"6px 10px",background:"rgba(129,140,248,0.07)",borderRadius:10,border:"1px solid rgba(129,140,248,0.2)" }}>
+              <span style={{ fontSize:12,color:"#a5b4fc" }}>✨ 背景を自動で除去する</span>
+              <div onClick={()=>setAutoBgRemove(v=>!v)} style={{ width:36,height:20,borderRadius:10,background:autoBgRemove?"#818cf8":"rgba(255,255,255,0.1)",cursor:"pointer",position:"relative",transition:"background 0.2s" }}>
+                <div style={{ position:"absolute",top:2,left:autoBgRemove?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s" }}/>
+              </div>
+            </div>
+            <div style={{ border:"2px dashed rgba(232,121,249,0.3)",borderRadius:12,height:110,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:removingBg?"default":"pointer",marginBottom:8,color:"#7c6a9a",overflow:"hidden",position:"relative" }} onClick={()=>!removingBg&&fileRef.current?.click()}>
+              {removingBg
+                ? <><div style={{ fontSize:22,marginBottom:4 }}>✨</div><div style={{ fontSize:12,color:"#a5b4fc" }}>背景を除去中…</div></>
+                : image
+                  ? <img src={image} alt="preview" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>
+                  : <><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>
+              }
               <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display:"none" }}/>
             </div>
             <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:10,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#a5b4fc",lineHeight:1.7 }}>
