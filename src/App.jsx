@@ -112,6 +112,10 @@ const MATERIALS = [
   { id:"dc_crown", type:"deco", name:"王冠",   emoji:"👑", tier:"free", animated:false, desc:"推しに王冠を"     },
   { id:"dc_heart", type:"deco", name:"ハート", emoji:"💖", tier:"free", animated:false, desc:"愛を込めて"       },
   { id:"dc_star2", type:"deco", name:"星",     emoji:"⭐", tier:"free", animated:false, desc:"きらりと輝く星"   },
+  // ── てがき素材（オリジナル） ──────────────────────────────
+  { id:"dc_hand_face",  type:"deco", name:"てがき顔",   emoji:"☺️", tier:"free", animated:false, desc:"手描きのにこにこ", image:"/hand-face.svg"  },
+  { id:"dc_hand_star",  type:"deco", name:"てがき星",   emoji:"✨", tier:"free", animated:false, desc:"手描きのきらきら", image:"/hand-star.svg"  },
+  { id:"dc_hand_heart", type:"deco", name:"てがきハート",emoji:"🩷", tier:"free", animated:false, desc:"手描きのふわはーと",image:"/hand-heart.svg" },
   // ── ライト ────────────────────────────────────────────────
   { id:"lt_spot", type:"light", name:"スポット", emoji:"🔦", tier:"free", animated:false, desc:"中央を照らす" },
   { id:"lt_warm", type:"light", name:"ウォーム", emoji:"🌟", tier:"free", animated:false, desc:"温かい光"     },
@@ -2438,7 +2442,9 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
                   border:`2px solid ${active?"#c084fc":"rgba(255,255,255,0.08)"}` }}>
                 {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#c084fc",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
                 {mat.type==="deco"&&active&&(()=>{ const cnt=(altar.decoItems||[]).filter(d=>d.materialId===mat.id).length; return cnt>0?<div style={{ position:"absolute",bottom:5,right:5,fontSize:9,background:"rgba(232,121,249,0.3)",color:"#e879f9",borderRadius:6,padding:"1px 5px",fontWeight:700 }}>×{cnt}</div>:null; })()}
-                <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>
+                {mat.image
+                  ? <img src={mat.image} alt={mat.name} style={{ width:44,height:44,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px" }}/>
+                  : <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>}
                 <div style={{ fontSize:11,fontWeight:700,color:active?"#c084fc":"#f0e8ff" }}>{mat.name}</div>
                 <div style={{ fontSize:9,color:"#7c6a9a",marginTop:2 }}>{mat.desc}</div>
               </div>
@@ -3289,6 +3295,8 @@ function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDec
               ? <BouquetDecoItem item={item} isSel={isSel} isDragging={isDragging}/>
               : isCustom && item.customImage
               ? <img src={item.customImage} alt={item.customName||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
+              : mat?.image
+              ? <img src={mat.image} alt={mat.name||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
               : mat?.emoji||"🖼️"}
             {/* Controls */}
             {isSel && !viewingShared && (

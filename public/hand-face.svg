@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Slightly organic circle body -->
+  <path d="M50 11 C30 10 11 28 11 50 C11 72 29 91 51 91 C73 91 90 72 90 50 C90 27 70 12 50 11 Z"
+        stroke="#FFAA50" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Left eye: small comma/tick -->
+  <path d="M37 43 C36 41 38 38 39 40 C39 42 37 44 37 43"
+        stroke="#FFAA50" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Right eye: small U shape -->
+  <path d="M56 41 C56 39 58 38 60 40"
+        stroke="#FFAA50" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Smile -->
+  <path d="M37 59 Q44 69 63 59"
+        stroke="#FFAA50" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Hand-drawn 5-point star outline (slightly irregular) -->
+  <path d="M50 7 L59 34 L88 35 L66 53 L74 80 L50 63 L26 80 L34 53 L12 35 L41 34 Z"
+        stroke="#F6F260" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
