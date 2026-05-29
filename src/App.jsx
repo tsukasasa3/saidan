@@ -286,6 +286,7 @@ export default function App() {
   const [viewingShared, setViewingShared] = useState(null); // shared altar object | null
   const [showTerms, setShowTerms]     = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [splashDone, setSplashDone]   = useState(false); // splashを消すタイミング
   const saveTimer = useRef(null);
 
   const activeAltar = altars.find(a=>a.id===activeAltarId) || altars[0];
@@ -323,6 +324,9 @@ export default function App() {
       setLoaded(true);
     })();
   },[]);
+
+  // ── Splash fade-out when loaded ───────────────────────────
+  useEffect(()=>{ if(loaded) setTimeout(()=>setSplashDone(true), 400); },[loaded]);
 
   // ── Auto-save ─────────────────────────────────────────────
   const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers)=>{
@@ -428,6 +432,9 @@ export default function App() {
 
   return (
     <div style={S.root}>
+      {/* ─── Splash Screen ─── */}
+      {!splashDone && <SplashScreen fading={loaded}/>}
+
       {toast && <div style={S.toast}>{toast}</div>}
 
       {/* Shared banner */}
@@ -3561,6 +3568,58 @@ const S = {
   emptyMsg:{ textAlign:"center",padding:40,color:"#6b7280" },
   emptyState:{ textAlign:"center",padding:"60px 20px",color:"#6b7280" },
 };
+
+// ─── Splash Screen ────────────────────────────────────────────
+function SplashScreen({ fading }) {
+  return (
+    <div style={{
+      position:"fixed", inset:0, background:"#0c0a14",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      zIndex:9999,
+      transition:"opacity 0.4s ease, visibility 0.4s ease",
+      opacity: fading ? 0 : 1,
+      visibility: fading ? "hidden" : "visible",
+      pointerEvents: fading ? "none" : "auto",
+    }}>
+      <style>{`
+        @keyframes saidanFloat  { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-10px) scale(1.06)} }
+        @keyframes saidanGlow   { 0%,100%{text-shadow:0 0 20px rgba(232,121,249,0.4)} 50%{text-shadow:0 0 40px rgba(232,121,249,0.9)} }
+        @keyframes saidanFadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes saidanDot    { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1.2)} }
+      `}</style>
+
+      {/* Icon */}
+      <div style={{ fontSize:72, animation:"saidanFloat 2.4s ease-in-out infinite", marginBottom:20 }}>⛩</div>
+
+      {/* Title */}
+      <div style={{
+        fontSize:30, fontWeight:900, letterSpacing:6,
+        background:"linear-gradient(135deg,#e879f9,#818cf8)",
+        WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+        animation:"saidanGlow 2s ease-in-out infinite, saidanFadeUp 0.5s ease forwards",
+        marginBottom:8,
+      }}>SAIDAN</div>
+
+      {/* Subtitle */}
+      <div style={{
+        fontSize:12, color:"#7c6a9a", letterSpacing:2,
+        animation:"saidanFadeUp 0.6s ease 0.15s both",
+        marginBottom:40,
+      }}>推しグッズ祭壇メーカー</div>
+
+      {/* Loading dots */}
+      <div style={{ display:"flex", gap:8 }}>
+        {[0,1,2].map(i=>(
+          <div key={i} style={{
+            width:8, height:8, borderRadius:"50%",
+            background:"#e879f9",
+            animation:`saidanDot 1.4s ease-in-out ${i*0.22}s infinite`,
+          }}/>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ─── 利用規約 Modal ────────────────────────────────────────────
 function TermsModal({ onClose }) {
