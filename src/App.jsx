@@ -197,7 +197,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
+  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -1471,9 +1471,15 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       {/* Altar name */}
       <div style={{ marginBottom:12 }}>
         {editingName?(
-          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+          <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
             <input ref={nameRef} value={nameInput} onChange={e=>setNameInput(e.target.value)} onBlur={commitName} onKeyDown={e=>{if(e.key==="Enter")commitName();if(e.key==="Escape"){setNameInput(altar.name);setEditingName(false);}}} maxLength={30}
-              style={{ flex:1,fontSize:20,fontWeight:800,background:"transparent",border:"none",borderBottom:"2px solid #e879f9",color:isDark?"#f0e8ff":"#1a0030",outline:"none",padding:"2px 4px" }}/>
+              style={{ flex:1,minWidth:0,fontSize:20,fontWeight:800,background:"transparent",border:"none",borderBottom:"2px solid #e879f9",color:isDark?"#f0e8ff":"#1a0030",outline:"none",padding:"2px 4px" }}/>
+            <button
+              onMouseDown={e=>{e.preventDefault(); onUpdateAltar({hideEmojiDecor:!altar.hideEmojiDecor});}}
+              title={altar.hideEmojiDecor?"絵文字を表示する":"絵文字を非表示にする"}
+              style={{ fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:altar.hideEmojiDecor?"rgba(255,255,255,0.06)":"rgba(232,121,249,0.15)",color:altar.hideEmojiDecor?"#6b7280":"#e879f9",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0 }}>
+              {altar.hideEmojiDecor ? "⛩ OFF" : "⛩ ON"}
+            </button>
             <button onClick={commitName} style={S.nameSaveBtn}>完了</button>
           </div>
         ):(
@@ -1504,7 +1510,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId}/>
-          <AltarTopBar template={template} altarName={altar.name}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {/* Deco stickers on shelf */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
@@ -1555,7 +1561,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {/* Hina pyramid */}
           <HinaStage
             hinaShelf={hinaShelf} template={template} goodById={goodById}
@@ -1579,7 +1585,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           <ShowcaseStage
             showcaseShelf={showcaseShelf} template={template} goodById={goodById}
             isDark={isDark} viewingShared={viewingShared}
@@ -1602,7 +1608,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           <FlatStage
             flatShelf={flatShelf} template={template} goodById={goodById}
             isDark={isDark} viewingShared={viewingShared}
@@ -1622,7 +1628,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       {/* Free mode */}
       {altarMode==="free"&&(
         <div ref={freeRef} onClick={()=>setSelectedFree(null)} style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,height:380,position:"relative",overflow:"hidden",cursor:draggingFree?"grabbing":"default",marginBottom:16 }}>
-          <AltarTopBar template={template} altarName={altar.name}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
@@ -1674,8 +1680,14 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   );
 }
 
-function AltarTopBar({ template, altarName }) {
-  return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"10px 20px",borderBottom:`1px solid ${template.border}`,color:template.accent,background:`${template.accent}08`,fontSize:14 }}><span>{template.emoji}</span><span style={{ fontSize:13,fontWeight:700,letterSpacing:2 }}>{altarName}</span><span>{template.emoji}</span></div>;
+function AltarTopBar({ template, altarName, hideEmojiDecor }) {
+  return (
+    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"10px 20px",borderBottom:`1px solid ${template.border}`,color:template.accent,background:`${template.accent}08`,fontSize:14 }}>
+      {!hideEmojiDecor && <span>{template.emoji}</span>}
+      <span style={{ fontSize:13,fontWeight:700,letterSpacing:2 }}>{altarName}</span>
+      {!hideEmojiDecor && <span>{template.emoji}</span>}
+    </div>
+  );
 }
 function StarField() {
   return <>{[...Array(24)].map((_,i)=><div key={i} style={{ position:"absolute",width:i%4===0?3:2,height:i%4===0?3:2,borderRadius:"50%",background:"#fff",opacity:0.15+(i*0.02)%0.4,left:`${5+(i*43)%90}%`,top:`${3+(i*29)%60}%`,animation:`twinkle ${2+i%3}s ease-in-out ${i*0.2}s infinite alternate`,pointerEvents:"none" }}/>)}<style>{`@keyframes twinkle{from{opacity:0.1;}to{opacity:0.6;}}`}</style></>;
@@ -2155,7 +2167,9 @@ function ShareModal({ altar, template, goodById, goods, onClose }) {
       const grd=ctx.createLinearGradient(0,0,0,H); const bgC=template.bg.match(/#[0-9a-f]{3,6}/gi)||["#0c0a14","#1a0f2e"]; grd.addColorStop(0,bgC[0]); grd.addColorStop(1,bgC[bgC.length-1]); ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
       ctx.fillStyle=template.floor; ctx.fillRect(0,H*0.68,W,H*0.32);
       ctx.fillStyle=`${template.accent}18`; ctx.fillRect(0,0,W,52); ctx.strokeStyle=template.border; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,52); ctx.lineTo(W,52); ctx.stroke();
-      ctx.fillStyle=template.accent; ctx.font="bold 15px sans-serif"; ctx.textAlign="center"; ctx.fillText(`${template.emoji}  ${altar.name}  ${template.emoji}`,W/2,34);
+      ctx.fillStyle=template.accent; ctx.font="bold 15px sans-serif"; ctx.textAlign="center";
+      const topLabel = altar.hideEmojiDecor ? altar.name : `${template.emoji}  ${altar.name}  ${template.emoji}`;
+      ctx.fillText(topLabel, W/2, 34);
       if(template.star){ctx.fillStyle="#fff";for(let i=0;i<30;i++){ctx.globalAlpha=0.2+(i*0.02)%0.4;ctx.beginPath();ctx.arc((i*137)%W,60+(i*89)%(H*0.5),i%5===0?2:1,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
       if(altar.altarMode==="shelf"){
         const shelfTop=60,shelfH=(H-140)/SHELF_ROWS,cellW=(W-40)/SHELF_COLS;
