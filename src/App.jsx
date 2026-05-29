@@ -2,6 +2,72 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEY = "saidan-v4";
+
+// ── Supabase config ───────────────────────────────────────────
+const SUPABASE_URL  = "https://gwkkyoqgcahyzasngaje.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3a2t5b3FnY2FoeXphc25nYWplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzI2NTEsImV4cCI6MjA5NTYwODY1MX0.fJRKEQLEY3IP90AJkWStDUUbrUif7lwA8hH9ztS6IUo";
+
+async function sbFetch(path, options={}) {
+  const session = JSON.parse(localStorage.getItem("saidan_session")||"null");
+  const headers = { "Content-Type":"application/json", "apikey":SUPABASE_ANON, "Authorization":`Bearer ${session?.access_token||SUPABASE_ANON}`, ...options.headers };
+  const res = await fetch(SUPABASE_URL+path, {...options, headers});
+  if (!res.ok) { const e=await res.text(); throw new Error(e); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// Auth helpers
+async function signUp(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+    method:"POST", headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON},
+    body: JSON.stringify({email,password})
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message||data.error);
+  return data;
+}
+
+async function signIn(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method:"POST", headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON},
+    body: JSON.stringify({email,password})
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message||data.error);
+  localStorage.setItem("saidan_session", JSON.stringify(data));
+  return data;
+}
+
+async function signOut() {
+  const session = JSON.parse(localStorage.getItem("saidan_session")||"null");
+  if (session?.access_token) {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method:"POST", headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON,"Authorization":`Bearer ${session.access_token}`}
+    });
+  }
+  localStorage.removeItem("saidan_session");
+}
+
+function getSession() {
+  return JSON.parse(localStorage.getItem("saidan_session")||"null");
+}
+
+// Save user data to Supabase
+async function saveToCloud(userId, data) {
+  // Upsert into user_data table
+  await sbFetch("/rest/v1/user_data", {
+    method:"POST",
+    headers:{"Prefer":"resolution=merge-duplicates"},
+    body: JSON.stringify({user_id:userId, data:JSON.stringify(data), updated_at:new Date().toISOString()})
+  });
+}
+
+// Load user data from Supabase
+async function loadFromCloud(userId) {
+  const rows = await sbFetch(`/rest/v1/user_data?user_id=eq.${userId}&select=data`);
+  if (!rows?.length) return null;
+  return JSON.parse(rows[0].data);
+}
 const PLAN_FREE    = "free";
 const PLAN_PRO     = "pro";
 const PLAN_PREMIUM = "premium";
@@ -200,7 +266,9 @@ function makeAltar(name="私の推し祭壇") {
 
 // ─── Root ─────────────────────────────────────────────────────
 export default function App() {
-  const [plan, setPlan]           = useState(PLAN_FREE);
+  const [session, setSession]       = useState(()=>getSession());
+  const [showAuth, setShowAuth]     = useState(false);
+  const [plan, setPlan]             = useState(PLAN_FREE);
   const [purchasedMaterials, setPurchasedMaterials] = useState([]); // array of material ids
   const [altars, setAltars]       = useState([makeAltar()]);
   const [activeAltarId, setActiveAltarId] = useState(null);
@@ -215,6 +283,7 @@ export default function App() {
   const [showMaterials, setShowMaterials]   = useState(false);
   const [showBouquet, setShowBouquet]       = useState(false);
   const [bouquets, setBouquets]             = useState([]); // saved bouquets
+  const [customFlowers, setCustomFlowers]   = useState([]); // user-uploaded flower images [{id,name,image}]
   const [showRandomSets, setShowRandomSets] = useState(false);
   const [showAltarManager, setShowAltarManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
@@ -226,43 +295,58 @@ export default function App() {
   const activeAltar = altars.find(a=>a.id===activeAltarId) || altars[0];
 
   // ── Load ──────────────────────────────────────────────────
+  const applyData = (d) => {
+    if (d.plan)       setPlan(d.plan);
+    if (d.altars?.length) { setAltars(d.altars); setActiveAltarId(d.activeAltarId||d.altars[0].id); }
+    if (d.goods)      setGoods(d.goods);
+    if (d.characters) setCharacters(d.characters);
+    if (d.purchasedMaterials) setPurchasedMaterials(d.purchasedMaterials);
+    if (d.randomSets) setRandomSets(d.randomSets);
+    if (d.bouquets)   setBouquets(d.bouquets);
+    if (d.customFlowers) setCustomFlowers(d.customFlowers);
+  };
+
   useEffect(()=>{
     (async()=>{
       const shared = decodeAltarFromURL();
       if (shared?.altar) { setViewingShared(shared.altar); setGoods(shared.goods||[]); setPage("altar"); setLoaded(true); return; }
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const d = JSON.parse(raw);
-          if (d.plan)       setPlan(d.plan);
-          if (d.altars?.length) { setAltars(d.altars); setActiveAltarId(d.activeAltarId||d.altars[0].id); }
-          if (d.goods)      setGoods(d.goods);
-          if (d.characters) setCharacters(d.characters);
-          if (d.purchasedMaterials) setPurchasedMaterials(d.purchasedMaterials);
-          if (d.randomSets) setRandomSets(d.randomSets);
-          if (d.bouquets)   setBouquets(d.bouquets);
-        } else {
-          const a = makeAltar(); setAltars([a]); setActiveAltarId(a.id);
+        // Try cloud first if logged in
+        const sess = getSession();
+        if (sess?.user?.id) {
+          const cloudData = await loadFromCloud(sess.user.id);
+          if (cloudData) { applyData(cloudData); setLoaded(true); return; }
         }
+        // Fall back to local storage
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) { applyData(JSON.parse(raw)); }
+        else { const a=makeAltar(); setAltars([a]); setActiveAltarId(a.id); }
       } catch { const a=makeAltar(); setAltars([a]); setActiveAltarId(a.id); }
       setLoaded(true);
     })();
   },[]);
 
   // ── Auto-save ─────────────────────────────────────────────
-  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets)=>{
+  const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers)=>{
     if (!loaded) return;
     setSaveStatus("saving");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async()=>{
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets}));
+        const data = {plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers};
+        // Always save locally
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // Also save to cloud if logged in
+        const sess = getSession();
+        if (sess?.user?.id) {
+          await saveToCloud(sess.user.id, data);
+        }
         setSaveStatus("saved"); setTimeout(()=>setSaveStatus(null),2000);
       } catch { setSaveStatus("error"); setTimeout(()=>setSaveStatus(null),3000); }
     },700);
   },[loaded]);
 
-  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,loaded]);
+  useEffect(()=>{ if(loaded) triggerSave(plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers); },[plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers,loaded]);
 
   const showToast = (msg)=>{ setToast(msg); setTimeout(()=>setToast(null),2200); };
 
@@ -360,28 +444,39 @@ export default function App() {
 
       <header style={S.header}>
         <div style={S.logo}>
-          <span style={{ fontSize:24 }}>⛩</span>
-          <div>
-            <div style={S.logoText}>SAIDAN</div>
-            <div style={S.logoSub}>推しグッズ管理 & 祭壇メーカー</div>
-          </div>
+          <span style={{ fontSize:22 }}>⛩</span>
+          <div style={S.logoText}>SAIDAN</div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           {saveLabel && !viewingShared && <span style={{ fontSize:11, fontWeight:700, color:saveColor }}>{saveLabel}</span>}
-          {/* Plan badge */}
           <button onClick={()=>isPro?downgradeToFree():setShowUpgrade(true)} style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${isPro?"#f59e0b":"rgba(255,255,255,0.15)"}`, background:isPro?"rgba(245,158,11,0.15)":"transparent", color:isPro?"#f59e0b":"#6b7280", fontSize:11, fontWeight:700, cursor:"pointer" }}>
-            {isPro?"👑 PRO":"FREE"}
+            {isPro?"👑":"FREE"}
           </button>
-          <nav style={{ display:"flex", gap:6 }}>
-            {[["collection","📦 コレクション"],["random","🎰 ガチャ管理"],["altar","⛩ 祭壇"],["bouquet","💐 花束"]].map(([p,l])=>(
-              <button key={p} onClick={()=>setPage(p)} style={{ ...S.navBtn, ...(page===p?S.navBtnOn:{}) }}>{l}</button>
-            ))}
-          </nav>
+          {/* Auth button */}
+          <button onClick={()=>session?setShowAuth("account"):setShowAuth("login")}
+            style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(255,255,255,0.12)",background:"transparent",color:session?"#4ade80":"#6b7280",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+            {session?"✓ ログイン中":"ログイン"}
+          </button>
         </div>
       </header>
 
+      {/* Bottom nav (mobile-first) */}
+      <nav style={S.bottomNav}>
+        {[
+          ["collection","📦","コレクション"],
+          ["random","🎰","ガチャ"],
+          ["altar","⛩","祭壇"],
+          ["bouquet","💐","花束"],
+        ].map(([p,icon,label])=>(
+          <button key={p} onClick={()=>setPage(p)} style={{ ...S.bottomNavBtn, ...(page===p?S.bottomNavBtnOn:{}) }}>
+            <span style={{ fontSize:20 }}>{icon}</span>
+            <span style={{ fontSize:10, fontWeight:page===p?700:400 }}>{label}</span>
+          </button>
+        ))}
+      </nav>
+
       {page==="bouquet"
-        ? <BouquetPage bouquets={bouquets} isPro={isPro} purchasedMaterials={purchasedMaterials} onSave={saveBouquet} onDelete={deleteBouquet} onPlace={placeBouquetOnAltar} onGoAltar={()=>setPage("altar")} characters={characters} />
+        ? <BouquetPage bouquets={bouquets} isPro={isPro} purchasedMaterials={purchasedMaterials} customFlowers={customFlowers} onSave={saveBouquet} onDelete={deleteBouquet} onPlace={placeBouquetOnAltar} onGoAltar={()=>setPage("altar")} characters={characters} onAddCustomFlower={addCustomFlower} onDeleteCustomFlower={deleteCustomFlower} />
         : page==="random"
         ? <RandomSetsPage randomSets={randomSets} isPro={isPro} onAdd={addRandomSet} onUpdate={updateRandomSet} onDelete={deleteRandomSet} onAddDrawLog={addDrawLog} />
         : page==="collection"
@@ -436,6 +531,13 @@ export default function App() {
         onSelect={(tid,cc)=>{ updateAltar(currentAltar.id,{templateId:tid,...(cc!==undefined?{customColors:cc}:{})}); setShowTemplates(false); showToast("テンプレートを更新しました ✓"); }}
         onClose={()=>setShowTemplates(false)} />}
       {showShare && <ShareModal altar={currentAltar} template={currentTemplate} goodById={goodById} goods={goods} onClose={()=>setShowShare(false)} />}
+      {showAuth && <AuthModal
+        mode={showAuth}
+        session={session}
+        onLogin={async(sess)=>{ setSession(sess); setShowAuth(false); showToast("ログインしました ✓"); }}
+        onLogout={async()=>{ await signOut(); setSession(null); setShowAuth(false); showToast("ログアウトしました"); }}
+        onClose={()=>setShowAuth(false)}
+      />}
       {showUpgrade && <UpgradeModal onUpgrade={upgradeToPro} onUpgradePremium={upgradeToPremium} onClose={()=>setShowUpgrade(false)} plan={plan} />}
       {showMaterials && <MaterialsModal altar={currentAltar} onUpdateAltar={(patch)=>updateAltar(currentAltar.id,patch)} isPremium={isPremium} purchasedMaterials={purchasedMaterials} onPurchase={purchaseMaterial} canUseMaterial={canUseMaterial} onClose={()=>setShowMaterials(false)} onUpgrade={()=>{setShowMaterials(false);setShowUpgrade(true);}} />}
       {showAltarManager && <AltarManagerModal altars={altars} activeId={activeAltar?.id} isPro={isPro}
@@ -446,7 +548,111 @@ export default function App() {
 }
 
 // ─── Bouquet Page ────────────────────────────────────────────
-function BouquetPage({ bouquets, isPro, purchasedMaterials, onSave, onDelete, onPlace, onGoAltar, characters }) {
+// ─── Custom Flower Upload ────────────────────────────────────
+function CustomFlowerUpload({ onAdd }) {
+  const fileRef = useRef(null);
+  const [open, setOpen]     = useState(false);
+  const [queue, setQueue]   = useState([]); // [{img, name}]
+  const [current, setCurrent] = useState(0); // index in queue
+
+  const handleFiles = async(e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const loaded = [];
+    for (const f of files) {
+      if (f.size > 3*1024*1024) continue;
+      const img = await readFileAsDataURL(f);
+      // guess name from filename
+      const raw = f.name.replace(/\.[^.]+$/, "").replace(/無題\d+_\d+/, "");
+      loaded.push({ img, name: raw || "" });
+    }
+    if (!loaded.length) { alert("読み込める画像がありませんでした"); return; }
+    setQueue(loaded);
+    setCurrent(0);
+    setOpen(true);
+    e.target.value = "";
+  };
+
+  const item = queue[current];
+
+  const updateName = (val) => {
+    setQueue(prev => prev.map((q,i) => i===current ? {...q, name:val} : q));
+  };
+
+  const submitOne = () => {
+    if (!item) return;
+    onAdd({ id:newUid(), name:item.name.trim()||"マイ花", image:item.img });
+    if (current < queue.length-1) {
+      setCurrent(c=>c+1);
+    } else {
+      setOpen(false); setQueue([]); setCurrent(0);
+    }
+  };
+
+  const submitAll = () => {
+    queue.forEach(q => onAdd({ id:newUid(), name:q.name.trim()||"マイ花", image:q.img }));
+    setOpen(false); setQueue([]); setCurrent(0);
+  };
+
+  const skip = () => {
+    if (current < queue.length-1) setCurrent(c=>c+1);
+    else { setOpen(false); setQueue([]); setCurrent(0); }
+  };
+
+  return (
+    <>
+      <button onClick={()=>fileRef.current?.click()} style={{ fontSize:11,fontWeight:700,color:"#e879f9",background:"rgba(232,121,249,0.1)",border:"1px solid rgba(232,121,249,0.2)",borderRadius:10,padding:"4px 12px",cursor:"pointer" }}>
+        ＋ まとめて追加
+      </button>
+      <input ref={fileRef} type="file" accept="image/png,image/gif,image/webp" multiple onChange={handleFiles} style={{ display:"none" }}/>
+
+      {open && item && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
+          <div style={{ background:"#110d20",borderRadius:18,padding:22,width:"100%",maxWidth:340,border:"1px solid rgba(232,121,249,0.2)" }}>
+            {/* Progress */}
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+              <div style={{ fontSize:15,fontWeight:800,color:"#e879f9" }}>🌸 花素材を登録</div>
+              <div style={{ fontSize:11,color:"#7c6a9a" }}>{current+1} / {queue.length}枚</div>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,marginBottom:14,overflow:"hidden" }}>
+              <div style={{ height:"100%",width:`${((current+1)/queue.length)*100}%`,background:"linear-gradient(90deg,#e879f9,#818cf8)",transition:"width 0.3s" }}/>
+            </div>
+
+            {/* Preview */}
+            <img src={item.img} alt="preview" style={{ width:"100%",height:140,objectFit:"contain",marginBottom:10,background:"rgba(255,255,255,0.03)",borderRadius:10 }}/>
+
+            {/* Name input */}
+            <div style={{ fontSize:11,color:"#7c6a9a",marginBottom:5 }}>花の名前</div>
+            <input value={item.name} onChange={e=>updateName(e.target.value)}
+              placeholder="例: 黄色マーガレット、ピンク小花…"
+              style={{ width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"8px 10px",color:"#f0e8ff",fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:12 }}
+              maxLength={20} autoFocus
+              onKeyDown={e=>e.key==="Enter"&&submitOne()}/>
+
+            {/* Actions */}
+            <div style={{ display:"flex",gap:8,marginBottom:8 }}>
+              <button onClick={skip} style={{ flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,cursor:"pointer" }}>
+                {current<queue.length-1?"スキップ →":"スキップして終了"}
+              </button>
+              <button onClick={submitOne} style={{ flex:2,padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+                {current<queue.length-1?"追加して次へ →":"追加して完了 ✓"}
+              </button>
+            </div>
+            {queue.length>1&&current===0&&(
+              <button onClick={submitAll} style={{ width:"100%",padding:"7px",borderRadius:10,border:"1px solid rgba(232,121,249,0.2)",background:"transparent",color:"#e879f9",fontSize:11,cursor:"pointer" }}>
+                全{queue.length}枚を名前なしで一括追加
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function BouquetPage({ bouquets, isPro, purchasedMaterials, customFlowers, onSave, onDelete, onPlace, onGoAltar, characters, onAddCustomFlower, onDeleteCustomFlower }) {
   const [showBuilder, setShowBuilder]   = useState(false);
   const [previewBouquet, setPreviewBouquet] = useState(null);
   const [birthTab, setBirthTab]         = useState("saved"); // "saved" | "birth"
@@ -535,6 +741,29 @@ function BouquetPage({ bouquets, isPro, purchasedMaterials, onSave, onDelete, on
         <div style={{ fontSize:10,color:"#4b5563",marginTop:8,textAlign:"center" }}>タップするとその月の誕生花で花束を作れます · 365日対応は近日公開予定</div>
       </div>
 
+      {/* Custom flower upload */}
+      <div style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 16px",marginBottom:14 }}>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:"#e879f9" }}>🌸 マイ花素材（描いた花・デコ画像）</div>
+          <CustomFlowerUpload onAdd={onAddCustomFlower}/>
+        </div>
+        {customFlowers.length===0 ? (
+          <div style={{ fontSize:11,color:"#4b5563",textAlign:"center",padding:"8px 0" }}>
+            アイビスペイントで描いた花やデコをアップロードして花束に使えます
+          </div>
+        ) : (
+          <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+            {customFlowers.map(f=>(
+              <div key={f.id} style={{ position:"relative",width:52,height:52,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)" }}>
+                <img src={f.image} alt={f.name} style={{ width:"100%",height:"100%",objectFit:"contain",background:"rgba(255,255,255,0.03)" }}/>
+                <div style={{ position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.6)",fontSize:7,color:"#fff",textAlign:"center",padding:"1px 2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{f.name}</div>
+                <button onClick={()=>onDeleteCustomFlower(f.id)} style={{ position:"absolute",top:1,right:1,width:14,height:14,borderRadius:"50%",border:"none",background:"rgba(239,68,68,0.8)",color:"#fff",fontSize:8,cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Tabs */}
       <div style={{ display:"flex",gap:6,marginBottom:14 }}>
         {[["saved",`💐 保存した花束 (${bouquets.length})`]].map(([t,l])=>(
@@ -571,7 +800,7 @@ function BouquetPage({ bouquets, isPro, purchasedMaterials, onSave, onDelete, on
         </div>
       )}
 
-      {showBuilder && <BouquetBuilder isPro={isPro} purchasedMaterials={purchasedMaterials} preset={showBuilder.preset} onSave={(b)=>{ onSave(b); setShowBuilder(false); }} onClose={()=>setShowBuilder(false)}/>}
+      {showBuilder && <BouquetBuilder isPro={isPro} purchasedMaterials={purchasedMaterials} customFlowers={customFlowers} preset={showBuilder.preset} onSave={(b)=>{ onSave(b); setShowBuilder(false); }} onClose={()=>setShowBuilder(false)}/>}
       {previewBouquet && (
         <div style={S.overlay} onClick={()=>setPreviewBouquet(null)}>
           <div style={{ background:"#110d20",borderRadius:20,padding:24,textAlign:"center",border:"1px solid rgba(232,121,249,0.2)" }} onClick={e=>e.stopPropagation()}>
@@ -632,7 +861,9 @@ function BouquetPreview({ bouquet, size=100 }) {
         const pos = getPos(i, Math.min(total,16), wrapStyle);
         return (
           <div key={i} style={{ position:"absolute",left:pos.x,top:pos.y,transform:"translate(-50%,-50%)",fontSize,lineHeight:1,zIndex:i+1,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}>
-            {fl.emoji}
+            {fl.isCustom && fl.customImage
+              ? <img src={fl.customImage} alt="" style={{ width:fontSize,height:fontSize,objectFit:"contain" }}/>
+              : fl.emoji}
           </div>
         );
       })}
@@ -642,7 +873,7 @@ function BouquetPreview({ bouquet, size=100 }) {
 }
 
 // ─── Bouquet Builder Modal ────────────────────────────────────
-function BouquetBuilder({ isPro, purchasedMaterials, onSave, onClose, preset }) {
+function BouquetBuilder({ isPro, purchasedMaterials, customFlowers=[], onSave, onClose, preset }) {
   const [name, setName]           = useState(preset?.name||"推しへの花束");
   const [selectedFlowers, setSelectedFlowers] = useState(preset?.flowers||[]); // [{id, count}]
   const [ribbonColor, setRibbonColor] = useState(preset?.ribbonColor||"rb_pink");
@@ -652,10 +883,10 @@ function BouquetBuilder({ isPro, purchasedMaterials, onSave, onClose, preset }) 
 
   const canUseFlower = (f) => f.free || isPro || purchasedMaterials.includes(f.id);
 
-  const setCount = (id, delta) => {
+  const setCount = (id, delta, customImage) => {
     setSelectedFlowers(prev=>{
       const ex = prev.find(f=>f.id===id);
-      if (!ex && delta>0) return [...prev,{id,count:1}];
+      if (!ex && delta>0) return [...prev,{id,count:1,...(customImage?{customImage}:{})}];
       if (!ex) return prev;
       const newCount = ex.count+delta;
       if (newCount<=0) return prev.filter(f=>f.id!==id);
@@ -701,8 +932,35 @@ function BouquetBuilder({ isPro, purchasedMaterials, onSave, onClose, preset }) 
 
         {/* Flowers tab */}
         {tab==="flowers" && (
-          <div style={{ maxHeight:260,overflowY:"auto" }}>
+          <div style={{ maxHeight:280,overflowY:"auto" }}>
             {!isPro&&<div style={{ fontSize:10,color:"#7c6a9a",marginBottom:8,padding:"6px 10px",background:"rgba(192,132,252,0.06)",borderRadius:8 }}>👑 PROプランで全ての花が使えます</div>}
+
+            {/* Custom uploaded flowers */}
+            {customFlowers.length>0&&(
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10,fontWeight:700,color:"#e879f9",marginBottom:6 }}>🌸 マイ花素材</div>
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
+                  {customFlowers.map(fl=>{
+                    const sel=selectedFlowers.find(f=>f.id===`custom_${fl.id}`);
+                    const cnt=sel?.count||0;
+                    return (
+                      <div key={fl.id} style={{ background:cnt>0?"rgba(232,121,249,0.1)":"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 6px",border:`1px solid ${cnt>0?"rgba(232,121,249,0.3)":"rgba(255,255,255,0.06)"}`,textAlign:"center" }}>
+                        <img src={fl.image} alt={fl.name} style={{ width:40,height:40,objectFit:"contain",marginBottom:3 }}/>
+                        <div style={{ fontSize:10,fontWeight:700,color:cnt>0?"#e879f9":"#d1d5db",marginBottom:4 }}>{fl.name}</div>
+                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
+                          <button onClick={()=>setCount(`custom_${fl.id}`,-1,fl.image)} disabled={cnt===0} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:cnt>0?"rgba(232,121,249,0.2)":"rgba(255,255,255,0.05)",color:cnt>0?"#e879f9":"#4b5563",fontSize:12,cursor:cnt>0?"pointer":"default",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
+                          <span style={{ fontSize:12,fontWeight:700,color:cnt>0?"#e879f9":"#6b7280",width:16,textAlign:"center" }}>{cnt}</span>
+                          <button onClick={()=>setCount(`custom_${fl.id}`,+1,fl.image)} style={{ width:20,height:20,borderRadius:"50%",border:"none",background:"rgba(232,121,249,0.2)",color:"#e879f9",fontSize:12,cursor:"pointer",fontWeight:800,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>＋</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ height:1,background:"rgba(255,255,255,0.07)",margin:"10px 0" }}/>
+              </div>
+            )}
+
+            <div style={{ fontSize:10,fontWeight:700,color:"#7c6a9a",marginBottom:6 }}>🌸 プリセット花</div>
             <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
               {FLOWERS.map(fl=>{
                 const sel = selectedFlowers.find(f=>f.id===fl.id);
@@ -1686,7 +1944,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       </div>
 
       {/* Controls */}
-      <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
+      <div style={{ display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center" }}>
         {[["shelf","🗄 棚"],["hina","🎎 ひな壇"],["showcase","🪟 ショーケース"],["flat","🟫 フラット台"],["free","✦ 自由配置"]].map(([m,l])=>(
           <button key={m} onClick={()=>!viewingShared&&onUpdateAltar({altarMode:m})} style={{ ...S.modeBtn,...(altarMode===m?S.modeBtnOn:{}) }}>{l}</button>
         ))}
@@ -2380,7 +2638,7 @@ function UpgradeModal({ onUpgrade, onUpgradePremium, onClose, plan }) {
           {/* Payment method selector */}
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:11,color:"#7c6a9a",fontWeight:700,marginBottom:8 }}>お支払い方法</div>
-            <div style={{ display:"flex",gap:8 }}>
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
               {[
                 { id:"card",   icon:"💳", label:"クレジットカード" },
                 { id:"apple",  icon:"",   label:"Apple Pay",  logo:true },
@@ -2415,7 +2673,7 @@ function UpgradeModal({ onUpgrade, onUpgradePremium, onClose, plan }) {
                   </div>
                 </div>
               </div>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8 }}>
                 <div style={S.fieldGroup}>
                   <label style={S.label}>有効期限</label>
                   <input value={cardExp} onChange={e=>setCardExp(formatExp(e.target.value))}
@@ -2682,6 +2940,8 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={S.modal} onClick={e=>e.stopPropagation()}>
+        {/* Drag handle */}
+        <div style={{ width:40,height:4,borderRadius:2,background:"rgba(255,255,255,0.15)",margin:"-4px auto 14px",flexShrink:0 }}/>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
           <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>グッズを追加</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
@@ -3137,24 +3397,124 @@ function LayerPanel({ freeItems, goodById, onReorder, onScaleDepth }) {
   );
 }
 
+// ─── Auth Modal ──────────────────────────────────────────────
+function AuthModal({ mode, session, onLogin, onLogout, onClose }) {
+  const [tab, setTab]         = useState(mode==="account"?"account":"login");
+  const [email, setEmail]     = useState("");
+  const [password, setPass]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleAuth = async(type) => {
+    if (!email.trim()||!password.trim()) { setError("メールアドレスとパスワードを入力してください"); return; }
+    if (password.length<6) { setError("パスワードは6文字以上にしてください"); return; }
+    setLoading(true); setError("");
+    try {
+      if (type==="signup") {
+        await signUp(email, password);
+        setSuccess("確認メールを送りました。メールのリンクをクリックしてから再度ログインしてください。");
+      } else {
+        const sess = await signIn(email, password);
+        onLogin(sess);
+      }
+    } catch(e) {
+      const msg = e.message||"";
+      if (msg.includes("Invalid login")) setError("メールアドレスまたはパスワードが間違っています");
+      else if (msg.includes("already registered")) setError("このメールアドレスはすでに登録されています");
+      else if (msg.includes("Email not confirmed")) setError("メールアドレスが確認されていません。届いたメールのリンクをクリックしてください");
+      else setError(msg||"エラーが発生しました");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:400 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ width:40,height:4,borderRadius:2,background:"rgba(255,255,255,0.15)",margin:"-4px auto 14px" }}/>
+
+        {/* Account tab (when logged in) */}
+        {tab==="account" && session && (<>
+          <div style={{ textAlign:"center",padding:"16px 0 20px" }}>
+            <div style={{ fontSize:36,marginBottom:8 }}>✓</div>
+            <div style={{ fontSize:16,fontWeight:800,color:"#4ade80",marginBottom:4 }}>ログイン中</div>
+            <div style={{ fontSize:12,color:"#7c6a9a" }}>{session.user?.email}</div>
+          </div>
+          <div style={{ background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:12,padding:"12px 14px",marginBottom:16,fontSize:12,color:"#86efac",lineHeight:1.7 }}>
+            ✓ データはクラウドに自動保存されています<br/>
+            ✓ どのデバイスからでも同じデータが使えます
+          </div>
+          <button onClick={onLogout} style={{ width:"100%",padding:"12px",borderRadius:12,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.08)",color:"#f87171",fontSize:14,fontWeight:700,cursor:"pointer" }}>
+            ログアウト
+          </button>
+        </>)}
+
+        {/* Login / Signup */}
+        {tab!=="account" && (<>
+          <div style={{ display:"flex",gap:8,marginBottom:20 }}>
+            {[["login","ログイン"],["signup","新規登録"]].map(([t,l])=>(
+              <button key={t} onClick={()=>{setTab(t);setError("");setSuccess("");}} style={{ flex:1,padding:"10px",borderRadius:12,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:14,fontWeight:700,cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+
+          <div style={{ background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#93c5fd",lineHeight:1.7 }}>
+            {tab==="login"
+              ? "ログインするとデータがクラウドに保存され、どのデバイスからでも使えます。"
+              : "アカウントを作るとデータがクラウドに保存されます。無料で登録できます。"}
+          </div>
+
+          <div style={S.fieldGroup}>
+            <label style={S.label}>メールアドレス</label>
+            <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
+              placeholder="your@email.com" style={S.input} maxLength={100}
+              onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
+          </div>
+          <div style={S.fieldGroup}>
+            <label style={S.label}>パスワード（6文字以上）</label>
+            <input value={password} onChange={e=>setPass(e.target.value)} type="password"
+              placeholder="••••••••" style={S.input} maxLength={100}
+              onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
+          </div>
+
+          {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{error}</div>}
+          {success && <div style={{ color:"#4ade80",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{success}</div>}
+
+          <button onClick={()=>handleAuth(tab)} disabled={loading}
+            style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:loading?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#e879f9,#818cf8)",color:loading?"#4b5563":"#fff",fontSize:15,fontWeight:800,cursor:loading?"default":"pointer",marginBottom:12 }}>
+            {loading?"処理中…":tab==="login"?"ログイン":"アカウントを作成"}
+          </button>
+
+          <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",lineHeight:1.7 }}>
+            ログインしなくてもSAIDANは使えます。<br/>
+            ログインするとデータがクラウドに同期されます。
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────
 const S = {
   root:{ fontFamily:"'Hiragino Sans','Noto Sans JP',sans-serif",minHeight:"100vh",background:"#0c0a14",color:"#f0e8ff",display:"flex",flexDirection:"column",userSelect:"none" },
   toast:{ position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"#1e1535",color:"#e9d5ff",padding:"10px 22px",borderRadius:30,fontSize:13,fontWeight:700,boxShadow:"0 4px 20px rgba(0,0,0,0.5)",zIndex:9999,border:"1px solid rgba(232,121,249,0.3)" },
-  header:{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 20px",background:"rgba(12,10,20,0.97)",borderBottom:"1px solid rgba(232,121,249,0.12)",position:"sticky",top:0,zIndex:100 },
-  logo:{ display:"flex",alignItems:"center",gap:10 },
-  logoText:{ fontSize:18,fontWeight:900,letterSpacing:3,background:"linear-gradient(90deg,#e879f9,#818cf8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" },
+  header:{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"rgba(12,10,20,0.97)",borderBottom:"1px solid rgba(232,121,249,0.12)",position:"sticky",top:0,zIndex:100 },
+  logo:{ display:"flex",alignItems:"center",gap:8 },
+  logoText:{ fontSize:16,fontWeight:900,letterSpacing:3,background:"linear-gradient(90deg,#e879f9,#818cf8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" },
   logoSub:{ fontSize:10,color:"#7c6a9a" },
   navBtn:{ padding:"6px 13px",borderRadius:20,border:"1px solid rgba(232,121,249,0.18)",background:"transparent",color:"#9ca3af",fontSize:12,fontWeight:600,cursor:"pointer" },
   navBtnOn:{ background:"rgba(232,121,249,0.15)",color:"#e879f9",border:"1px solid rgba(232,121,249,0.4)" },
-  main:{ flex:1,padding:"18px 16px",maxWidth:780,width:"100%",margin:"0 auto" },
-  statsRow:{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16 },
+  bottomNav:{ display:"flex",position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,8,18,0.97)",borderTop:"1px solid rgba(232,121,249,0.15)",zIndex:100,backdropFilter:"blur(10px)" },
+  bottomNavBtn:{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,padding:"8px 4px 10px",border:"none",background:"transparent",color:"#6b7280",cursor:"pointer",transition:"all 0.15s" },
+  bottomNavBtnOn:{ color:"#e879f9",background:"rgba(232,121,249,0.08)" },
+  main:{ flex:1,padding:"18px 16px 88px",maxWidth:780,width:"100%",margin:"0 auto" },
+  statsRow:{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(80px,1fr))",gap:8,marginBottom:16 },
   statCard:{ background:"rgba(255,255,255,0.04)",borderRadius:12,padding:"12px 8px",textAlign:"center",border:"1px solid rgba(255,255,255,0.06)" },
   toolbar:{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8 },
   filterBtn:{ padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#9ca3af",fontSize:12,fontWeight:600,cursor:"pointer" },
   filterBtnOn:{ background:"rgba(232,121,249,0.15)",color:"#e879f9",border:"1px solid rgba(232,121,249,0.3)" },
   addBtn:{ padding:"8px 18px",borderRadius:20,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 2px 12px rgba(232,121,249,0.3)" },
-  grid:{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(185px,1fr))",gap:10 },
+  grid:{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8 },
   card:{ background:"rgba(255,255,255,0.04)",borderRadius:14,border:"1px solid rgba(255,255,255,0.07)",overflow:"hidden",display:"flex",flexDirection:"column" },
   cardImgWrap:{ position:"relative",aspectRatio:"1",background:"rgba(0,0,0,0.3)" },
   cardImg:{ width:"100%",height:"100%",objectFit:"contain" },
@@ -3183,15 +3543,15 @@ const S = {
   emptyCellHint:{ fontSize:16,pointerEvents:"none" },
   trayWrap:{ background:"rgba(255,255,255,0.03)",borderRadius:14,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden" },
   trayTitle:{ padding:"11px 16px",fontSize:13,fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.05)",color:"#c084fc" },
-  tray:{ display:"flex",gap:10,padding:"12px 16px",overflowX:"auto",flexWrap:"wrap" },
+  tray:{ display:"flex",gap:8,padding:"10px 12px",overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch" },
   trayItem:{ width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3,position:"relative",background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"8px 4px",border:"1px solid rgba(255,255,255,0.07)",transition:"all 0.15s" },
   trayItemImg:{ width:48,height:58,objectFit:"contain" },
   trayItemEmoji:{ fontSize:32,height:58,display:"flex",alignItems:"center",justifyContent:"center" },
   trayItemLabel:{ fontSize:9,color:"rgba(255,255,255,0.45)",textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" },
   trayCheckBadge:{ position:"absolute",top:4,right:4,width:14,height:14,borderRadius:"50%",background:"#22c55e",color:"#fff",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900 },
   nameSaveBtn:{ background:"#e879f9",color:"#fff",border:"none",borderRadius:12,padding:"4px 14px",fontSize:12,fontWeight:700,cursor:"pointer" },
-  overlay:{ position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16 },
-  modal:{ background:"#110d20",borderRadius:20,padding:"22px 20px",width:"100%",maxWidth:440,maxHeight:"90vh",overflowY:"auto",border:"1px solid rgba(232,121,249,0.22)",boxShadow:"0 20px 60px rgba(0,0,0,0.8)" },
+  overlay:{ position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,padding:"0 0 0 0" },
+  modal:{ background:"#110d20",borderRadius:"20px 20px 0 0",padding:"20px 16px 32px",width:"100%",maxWidth:500,maxHeight:"92vh",overflowY:"auto",border:"1px solid rgba(232,121,249,0.22)",boxShadow:"0 -8px 40px rgba(0,0,0,0.6)" },
   confirmBox:{ background:"#110d20",borderRadius:16,padding:"28px 24px",maxWidth:320,width:"100%",border:"1px solid rgba(239,68,68,0.3)",textAlign:"center" },
   btnGhost:{ padding:"8px 20px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"#9ca3af",fontSize:13,fontWeight:700,cursor:"pointer" },
   btnDanger:{ padding:"8px 20px",borderRadius:12,border:"none",background:"#ef4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer" },
