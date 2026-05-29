@@ -1740,7 +1740,7 @@ function GoodCard({ good, count=1, characters, isPro, onStatusChange, onDelete, 
         {good.series&&<div style={S.cardSeries}>{good.series}</div>}
         {good.purchaseDate&&<div style={S.cardMeta}>📅 {good.purchaseDate}</div>}
         {good.releaseDate&&<div style={S.cardMeta}>🔖 発売: {good.releaseDate}</div>}
-        {good.proofImage&&<div style={{ fontSize:10,color:"#4ade80",fontWeight:700,marginTop:2 }}>✓ 証明済み</div>}
+        {(good.proofImage||good.receiptImage)&&<div style={{ fontSize:10,color:"#4ade80",fontWeight:700,marginTop:2 }}>✓ 証明済み{good.proofImage&&good.receiptImage?" 📸📧":good.proofImage?" 📸":" 📧"}</div>}
         {good.officialUrl&&<a href={good.officialUrl} target="_blank" rel="noreferrer" style={{ fontSize:10,color:"#818cf8",display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>🔗 公式サイト</a>}
       </div>
       <div style={S.cardActions}>
@@ -2974,10 +2974,12 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
   const [error,setError]         = useState("");
   const [imgWarn,setImgWarn]     = useState(""); // スクショ検出警告
   const [proofImage,setProofImage] = useState(null); // 手持ち証明写真
+  const [receiptImage,setReceiptImage] = useState(null); // 購入確認メールスクショ
   const [removingBg,setRemovingBg] = useState(false);
   const [autoBgRemove,setAutoBgRemove] = useState(true);
   const fileRef = useRef(null);
   const proofRef = useRef(null);
+  const receiptRef = useRef(null);
 
   // Free plan emoji picker options
   const EMOJI_PICKS = ["📦","🧸","🖼️","🪆","🎀","🎵","📚","🎮","☕","⭐","🌸","💎","🎪","🖊️","🎭","🏆","🃏","🔵","🎰","🌙","🔥","🐱","🦊","🐰","🌈"];
@@ -3021,6 +3023,12 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
     setProofImage(await readFileAsDataURL(f));
   };
 
+  const handleReceiptFile = async(e) => {
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size>5*1024*1024){setError("購入確認画像は5MB以下にしてください");return;}
+    setReceiptImage(await readFileAsDataURL(f));
+  };
+
   const resolvedEmoji = emojiInput || "📦";
 
   const today = new Date().toISOString().split("T")[0];
@@ -3035,7 +3043,8 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
       emoji: resolvedEmoji,
       officialUrl: officialUrl.trim()||null,
       purchaseDate, releaseDate, memo:memo.trim(), characterId,
-      proofImage: proofImage||null,  // 手持ち証明写真
+      proofImage: proofImage||null,    // 手持ち証明写真
+      receiptImage: receiptImage||null, // 購入確認メールスクショ
       createdAt:new Date().toISOString(),
     });
     onClose();
@@ -3173,18 +3182,38 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
         {/* 証明写真（持ってる場合のみ） */}
         {status==="owned" && (
           <div style={{ background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:12 }}>
-            <div style={{ fontSize:12,color:"#4ade80",fontWeight:700,marginBottom:6 }}>✋ 手持ち証明写真（任意）</div>
-            <div style={{ fontSize:11,color:"#86efac",marginBottom:8,lineHeight:1.6 }}>グッズを手に持って撮った写真を登録すると <strong>✓ 証明済み</strong> バッジが付きます。交換・譲渡での信頼度が上がります。</div>
-            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <div onClick={()=>proofRef.current?.click()} style={{ width:64,height:64,borderRadius:10,border:"2px dashed rgba(74,222,128,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0 }}>
-                {proofImage?<img src={proofImage} alt="proof" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>:<span style={{ fontSize:22 }}>📸</span>}
+            <div style={{ fontSize:12,color:"#4ade80",fontWeight:700,marginBottom:6 }}>📋 所有証明（任意）</div>
+            <div style={{ fontSize:11,color:"#86efac",marginBottom:10,lineHeight:1.6 }}>どちらか一方でも登録すると <strong>✓ 証明済み</strong> バッジが付きます。</div>
+
+            {/* 手持ち写真 */}
+            <div style={{ marginBottom:10 }}>
+              <div style={{ fontSize:11,color:"#6ee7b7",fontWeight:700,marginBottom:6 }}>✋ 手持ち写真</div>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <div onClick={()=>proofRef.current?.click()} style={{ width:64,height:64,borderRadius:10,border:"2px dashed rgba(74,222,128,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0 }}>
+                  {proofImage?<img src={proofImage} alt="proof" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>:<span style={{ fontSize:22 }}>📸</span>}
+                </div>
+                <div style={{ fontSize:11,color:"#6ee7b7",lineHeight:1.7 }}>
+                  グッズを手に持って撮った写真<br/>
+                  <span style={{ color:"#fca5a5" }}>商品画像・スクショはNGです</span>
+                </div>
               </div>
-              <div style={{ fontSize:11,color:"#6ee7b7",lineHeight:1.7 }}>
-                実際に手に持った写真を撮って追加してください。<br/>
-                <span style={{ color:"#fca5a5" }}>商品画像・スクショはNGです</span>
-              </div>
+              <input ref={proofRef} type="file" accept="image/*" onChange={handleProofFile} style={{ display:"none" }}/>
             </div>
-            <input ref={proofRef} type="file" accept="image/*" onChange={handleProofFile} style={{ display:"none" }}/>
+
+            {/* 購入確認メールスクショ */}
+            <div>
+              <div style={{ fontSize:11,color:"#6ee7b7",fontWeight:700,marginBottom:6 }}>📧 購入確認メール・注文確認画面</div>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <div onClick={()=>receiptRef.current?.click()} style={{ width:64,height:64,borderRadius:10,border:"2px dashed rgba(74,222,128,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0 }}>
+                  {receiptImage?<img src={receiptImage} alt="receipt" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>:<span style={{ fontSize:22 }}>📩</span>}
+                </div>
+                <div style={{ fontSize:11,color:"#6ee7b7",lineHeight:1.7 }}>
+                  ECサイトの注文確認メールや<br/>
+                  注文履歴ページのスクショでOK
+                </div>
+              </div>
+              <input ref={receiptRef} type="file" accept="image/*" onChange={handleReceiptFile} style={{ display:"none" }}/>
+            </div>
           </div>
         )}
 
