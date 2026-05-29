@@ -1413,7 +1413,9 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   },[draggingDeco,dragOffsetDeco,decoItems,onUpdateAltar]);
 
   const endDecoDrag = useCallback(()=>setDraggingDeco(null),[]);
-  const scaleDecoItem = (id,d)=>onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,scale:Math.max(0.5,Math.min(4,i.scale+d))}:i)});
+  const scaleDecoItem  = (id,d)=>onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,scale:Math.max(0.3,Math.min(5,(i.scale||1)+d))}:i)});
+  const rotateDecoItem = (id,d)=>onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,rotation:(i.rotation||0)+d}:i)});
+  const updateDecoItem = (id,patch)=>onUpdateAltar({decoItems:decoItems.map(i=>i.id===id?{...i,...patch}:i)});
   const removeDecoItem = (id)=>{ onUpdateAltar({decoItems:decoItems.filter(i=>i.id!==id)}); setSelectedDeco(null); };
 
   // Layer reorder: swap zIndex values to move item forward/backward
@@ -1507,7 +1509,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
-            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+            onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
           {shelf.map((row,rIdx)=>{
             const ss=SHELF_STYLES.find(s=>s.id===(altar.shelfStyleId||"default"))||SHELF_STYLES[0];
             return (
@@ -1552,7 +1554,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
-            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+            onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
           <AltarTopBar template={template} altarName={altar.name}/>
           {/* Hina pyramid */}
           <HinaStage
@@ -1576,7 +1578,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
-            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+            onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
           <AltarTopBar template={template} altarName={altar.name}/>
           <ShowcaseStage
             showcaseShelf={showcaseShelf} template={template} goodById={goodById}
@@ -1599,7 +1601,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
-            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+            onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
           <AltarTopBar template={template} altarName={altar.name}/>
           <FlatStage
             flatShelf={flatShelf} template={template} goodById={goodById}
@@ -1629,7 +1631,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
-            onScale={scaleDecoItem} onRemove={removeDecoItem} freeRef={freeRef}/>
+            onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
           <div style={{ position:"absolute",bottom:0,left:0,right:0,height:"30%",background:template.floor,borderTop:`1px solid ${template.border}` }}/>
           {freeItems.length===0&&<div style={{ position:"absolute",top:"55%",left:"50%",transform:"translate(-50%,-50%)",textAlign:"center",color:`${template.accent}44`,pointerEvents:"none" }}><div style={{ fontSize:32,marginBottom:6 }}>✦</div><div style={{ fontSize:12 }}>下のグッズをクリックして配置しよう</div></div>}
           {freeItems.map(item=>{ const good=goodById(item.goodId); if(!good) return null; const isSel=selectedFree===item.id; return (
@@ -2707,58 +2709,109 @@ function FlatStage({ flatShelf, template, goodById, isDark, viewingShared, dragS
 
 // ─── Deco Layer ──────────────────────────────────────────────
 // Renders deco stickers on top of altar (both shelf and free modes)
-function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDeco, onStartDrag, onSelect, onScale, onRemove }) {
+// Supports: 1-finger drag, 2-finger pinch(scale) + twist(rotate), button controls
+function DecoLayer({ decoItems, isDark, viewingShared, draggingDeco, selectedDeco, onStartDrag, onSelect, onScale, onRotate, onUpdate, onRemove, onEndDrag }) {
+  const pinchRef = useRef(null); // { id, initDist, initAngle, initScale, initRot }
+
+  const ptDist  = (t1,t2) => Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
+  const ptAngle = (t1,t2) => Math.atan2(t2.clientY-t1.clientY, t2.clientX-t1.clientX) * 180 / Math.PI;
+
   if (!decoItems?.length) return null;
-  const DECO_ANIMS = {
-    dc_ribbon: "decoRibbon 1.5s ease-in-out infinite alternate",
-    dc_light:  "decoLight 1.2s ease-in-out infinite alternate",
-    dc_music:  "decoMusic 1s ease-in-out infinite alternate",
-    dc_fire2:  "decoFire 0.8s ease-in-out infinite alternate",
-  };
+
   return (
     <>
-      <style>{`
-        @keyframes decoRibbon { from{transform:rotate(-8deg)} to{transform:rotate(8deg)} }
-        @keyframes decoLight  { from{opacity:0.7;transform:scale(0.9)} to{opacity:1;transform:scale(1.1)} }
-        @keyframes decoMusic  { from{transform:translateY(0) rotate(-5deg)} to{transform:translateY(-6px) rotate(5deg)} }
-        @keyframes decoFire   { from{transform:scaleY(1) scaleX(1)} to{transform:scaleY(1.2) scaleX(0.9)} }
-      `}</style>
       {decoItems.map(item=>{
-        const isCustom  = item.materialId==="custom";
+        const isCustom = item.materialId==="custom";
         const mat = isCustom ? {id:"custom",emoji:"🖼️",animated:false} : MATERIALS.find(m=>m.id===item.materialId);
         if (!mat && !isCustom) return null;
-        const isSel = selectedDeco===item.id;
+        const isSel     = selectedDeco===item.id;
         const isDragging = draggingDeco===item.id;
-        const anim = mat.animated ? DECO_ANIMS[mat.id] : undefined;
+        const scale    = item.scale    || 1;
+        const rotation = item.rotation || 0;
+
+        const handleTouchStart = (e) => {
+          if (viewingShared) return;
+          e.stopPropagation();
+          onSelect(item.id);
+          if (e.touches.length >= 2) {
+            // 2本指 → ピンチ開始（ドラッグ停止）
+            onEndDrag?.();
+            const t1=e.touches[0], t2=e.touches[1];
+            pinchRef.current = {
+              id: item.id,
+              initDist:  ptDist(t1,t2),
+              initAngle: ptAngle(t1,t2),
+              initScale: scale,
+              initRot:   rotation,
+            };
+          } else {
+            // 1本指 → ドラッグ
+            pinchRef.current = null;
+            onStartDrag(e, item.id);
+          }
+        };
+
+        const handleTouchMove = (e) => {
+          const p = pinchRef.current;
+          if (!p || p.id !== item.id || e.touches.length < 2) return;
+          e.stopPropagation();
+          const t1=e.touches[0], t2=e.touches[1];
+          const newScale = Math.max(0.3, Math.min(5, p.initScale * (ptDist(t1,t2) / p.initDist)));
+          const newRot   = p.initRot + (ptAngle(t1,t2) - p.initAngle);
+          onUpdate(item.id, { scale: newScale, rotation: newRot });
+        };
+
+        const handleTouchEnd = (e) => {
+          if (pinchRef.current?.id === item.id && e.touches.length < 2) {
+            pinchRef.current = null;
+          }
+        };
+
         return (
           <div key={item.id}
             onMouseDown={e=>{ if(viewingShared) return; e.stopPropagation(); onSelect(item.id); onStartDrag(e,item.id); }}
-            onTouchStart={e=>{ if(viewingShared) return; e.stopPropagation(); onSelect(item.id); onStartDrag(e,item.id); }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             onClick={e=>{ e.stopPropagation(); onSelect(item.id); }}
             style={{
               position:"absolute",
               left:item.x, top:item.y,
-              transform:`translate(-50%,-50%) scale(${item.scale||1})`,
+              transform:`translate(-50%,-50%) scale(${scale}) rotate(${rotation}deg)`,
               zIndex:(item.zIndex||50)+200,
               cursor:isDragging?"grabbing":viewingShared?"default":"grab",
               fontSize:36,
               lineHeight:1,
-              animation:anim,
               filter:isSel?"drop-shadow(0 0 8px rgba(232,121,249,0.9))":"drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
               transition:isDragging?"none":"filter 0.2s",
               userSelect:"none",
+              touchAction:"none",
             }}>
             {isCustom && item.customImage
               ? <img src={item.customImage} alt={item.customName||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
               : mat?.image
               ? <img src={mat.image} alt={mat.name||"デコ"} style={{ width:64,height:64,objectFit:"contain",display:"block" }}/>
               : mat?.emoji||"🖼️"}
-            {/* Controls */}
+
+            {/* コントロールパネル（選択時） */}
             {isSel && !viewingShared && (
-              <div style={{ position:"absolute",top:-34,left:"50%",transform:"translateX(-50%)",display:"flex",gap:4,background:isDark?"rgba(10,5,20,0.95)":"rgba(255,255,255,0.95)",borderRadius:20,padding:"4px 8px",border:"1px solid rgba(232,121,249,0.3)",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",whiteSpace:"nowrap" }}>
-                {[{l:"−",a:()=>onScale(item.id,-0.2)},{l:"+",a:()=>onScale(item.id,+0.2)},{l:"🗑",a:()=>onRemove(item.id)}].map(b=>(
-                  <button key={b.l} onMouseDown={e=>{e.stopPropagation();b.a();}}
-                    style={{ width:22,height:22,border:"none",borderRadius:"50%",background:b.l==="🗑"?"rgba(239,68,68,0.2)":"rgba(232,121,249,0.2)",color:b.l==="🗑"?"#ef4444":"#e879f9",fontSize:11,cursor:"pointer",fontWeight:900,padding:0,display:"flex",alignItems:"center",justifyContent:"center" }}>{b.l}</button>
+              <div style={{ position:"absolute",top:-40,left:"50%",transform:"translateX(-50%) rotate(0deg)",display:"flex",gap:3,background:isDark?"rgba(10,5,20,0.95)":"rgba(255,255,255,0.95)",borderRadius:22,padding:"5px 9px",border:"1px solid rgba(232,121,249,0.3)",boxShadow:"0 4px 16px rgba(0,0,0,0.4)",whiteSpace:"nowrap" }}>
+                {[
+                  { l:"↺", a:()=>onRotate(item.id,-15), tip:"左回転" },
+                  { l:"↻", a:()=>onRotate(item.id,+15), tip:"右回転" },
+                  { l:"−", a:()=>onScale(item.id,-0.2),  tip:"縮小"  },
+                  { l:"+", a:()=>onScale(item.id,+0.2),  tip:"拡大"  },
+                  { l:"🗑", a:()=>onRemove(item.id),      tip:"削除"  },
+                ].map(b=>(
+                  <button key={b.l}
+                    onMouseDown={e=>{e.stopPropagation();b.a();}}
+                    onTouchStart={e=>{e.stopPropagation();e.preventDefault();b.a();}}
+                    title={b.tip}
+                    style={{ width:24,height:24,border:"none",borderRadius:"50%",
+                      background:b.l==="🗑"?"rgba(239,68,68,0.2)":"rgba(232,121,249,0.15)",
+                      color:b.l==="🗑"?"#ef4444":"#e879f9",
+                      fontSize:b.l==="🗑"?12:13,cursor:"pointer",fontWeight:900,padding:0,
+                      display:"flex",alignItems:"center",justifyContent:"center" }}>{b.l}</button>
                 ))}
               </div>
             )}
