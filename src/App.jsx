@@ -534,7 +534,25 @@ export default function App() {
       {showAuth && <AuthModal
         mode={showAuth}
         session={session}
-        onLogin={async(sess)=>{ setSession(sess); setShowAuth(false); showToast("ログインしました ✓"); }}
+        onLogin={async(sess)=>{
+          setSession(sess);
+          setShowAuth(false);
+          showToast("データを同期中…");
+          try {
+            const cloudData = await loadFromCloud(sess.user.id);
+            if (cloudData) {
+              applyData(cloudData);
+              showToast("✓ クラウドのデータを読み込みました");
+            } else {
+              // 初回ログイン：ローカルデータをクラウドに保存
+              const data = {plan,altars,activeAltarId:altars[0]?.id,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers};
+              await saveToCloud(sess.user.id, data);
+              showToast("✓ ログインしました");
+            }
+          } catch(e) {
+            showToast("ログインしました（同期エラー）");
+          }
+        }}
         onLogout={async()=>{ await signOut(); setSession(null); setShowAuth(false); showToast("ログアウトしました"); }}
         onClose={()=>setShowAuth(false)}
       />}
