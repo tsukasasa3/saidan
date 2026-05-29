@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="#0c0a14"/>
+  <!-- Torii gate shape -->
+  <!-- Top horizontal bar (kasagi) -->
+  <rect x="60" y="140" width="392" height="36" rx="8" fill="#e879f9"/>
+  <!-- Second horizontal bar (nuki) -->
+  <rect x="100" y="210" width="312" height="26" rx="6" fill="#a855f7"/>
+  <!-- Left pillar -->
+  <rect x="108" y="236" width="44" height="210" rx="8" fill="#c084fc"/>
+  <!-- Right pillar -->
+  <rect x="360" y="236" width="44" height="210" rx="8" fill="#c084fc"/>
+  <!-- Top arch curve (decorative) -->
+  <path d="M60 158 Q256 100 452 158" stroke="#f0abfc" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Small star decos -->
+  <circle cx="256" cy="100" r="12" fill="#fbbf24"/>
+  <circle cx="200" cy="118" r="7" fill="#f0abfc" opacity="0.7"/>
+  <circle cx="312" cy="118" r="7" fill="#f0abfc" opacity="0.7"/>
+</svg>

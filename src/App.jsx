@@ -284,6 +284,8 @@ export default function App() {
   const [loaded, setLoaded]       = useState(false);
   const [toast, setToast]         = useState(null);
   const [viewingShared, setViewingShared] = useState(null); // shared altar object | null
+  const [showTerms, setShowTerms]     = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const saveTimer = useRef(null);
 
   const activeAltar = altars.find(a=>a.id===activeAltarId) || altars[0];
@@ -578,6 +580,19 @@ export default function App() {
       {showAltarManager && <AltarManagerModal altars={altars} activeId={activeAltar?.id} isPro={isPro}
         onAdd={addAltar} onDelete={deleteAltar} onRename={renameAltar} onSwitch={(id)=>{setActiveAltarId(id);setShowAltarManager(false);}}
         onUpgrade={()=>{ setShowAltarManager(false); setShowUpgrade(true); }} onClose={()=>setShowAltarManager(false)} />}
+
+      {/* ─── Footer ─── */}
+      <div style={{ textAlign:"center",padding:"32px 20px 100px",fontSize:11,color:"#374151" }}>
+        <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:8 }}>
+          <button onClick={()=>setShowTerms(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>利用規約</button>
+          <button onClick={()=>setShowPrivacy(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>プライバシーポリシー</button>
+          <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#6b7280",fontSize:11,textDecoration:"none" }}>𝕏 @SAIDANdayo</a>
+        </div>
+        <div style={{ color:"#4b5563",fontSize:10 }}>© 2026 SAIDAN</div>
+      </div>
+
+      {showTerms   && <TermsModal   onClose={()=>setShowTerms(false)}/>}
+      {showPrivacy && <PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
     </div>
   );
 }
@@ -3546,3 +3561,102 @@ const S = {
   emptyMsg:{ textAlign:"center",padding:40,color:"#6b7280" },
   emptyState:{ textAlign:"center",padding:"60px 20px",color:"#6b7280" },
 };
+
+// ─── 利用規約 Modal ────────────────────────────────────────────
+function TermsModal({ onClose }) {
+  const H = ({children})=><div style={{ fontSize:13,fontWeight:800,color:"#c084fc",marginTop:20,marginBottom:6 }}>{children}</div>;
+  const P = ({children})=><p style={{ fontSize:12,color:"#d1d5db",lineHeight:1.8,marginBottom:4 }}>{children}</p>;
+  return (
+    <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>📜 利用規約</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:16 }}>最終更新日：2026年5月30日</div>
+
+        <H>第1条（サービスの内容）</H>
+        <P>本規約は、SAIDAN（以下「本サービス」）の利用条件を定めるものです。本サービスは、推しグッズのコレクション管理・祭壇作成ができるウェブアプリケーションです。</P>
+
+        <H>第2条（利用資格）</H>
+        <P>本サービスは13歳以上の方が利用できます。13歳未満の方のご利用はお断りします。</P>
+
+        <H>第3条（アカウント）</H>
+        <P>1. ユーザーはメールアドレスとパスワードでアカウントを作成できます。</P>
+        <P>2. アカウント情報の管理はユーザーの責任です。</P>
+        <P>3. 不正利用が確認された場合、予告なくアカウントを削除する場合があります。</P>
+
+        <H>第4条（ユーザーコンテンツ）</H>
+        <P>1. ユーザーが投稿した画像・データの著作権はユーザーに帰属します。</P>
+        <P>2. ユーザーは本サービスの運営に必要な範囲でのデータ利用を許諾するものとします。</P>
+        <P>3. 第三者の著作権・肖像権を侵害するコンテンツの投稿は禁止します。</P>
+
+        <H>第5条（禁止事項）</H>
+        <P>・法令または公序良俗に反する行為</P>
+        <P>・第三者の権利を侵害する行為</P>
+        <P>・本サービスの運営を妨げる行為</P>
+        <P>・商業目的での無断利用</P>
+
+        <H>第6条（サービスの変更・停止）</H>
+        <P>本サービスは予告なく内容の変更・停止・終了する場合があります。これによる損害について、運営は責任を負いません。</P>
+
+        <H>第7条（免責事項）</H>
+        <P>本サービスは現状有姿で提供されます。データの消失・システム障害・第三者サービスの障害による損害について、運営は責任を負いません。</P>
+
+        <H>第8条（準拠法・管轄裁判所）</H>
+        <P>本規約は日本法に準拠し、東京地方裁判所を第一審の管轄裁判所とします。</P>
+
+        <H>お問い合わせ</H>
+        <P>X（旧Twitter）: <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a></P>
+        <P>Email: <a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a></P>
+      </div>
+    </div>
+  );
+}
+
+// ─── プライバシーポリシー Modal ────────────────────────────────
+function PrivacyModal({ onClose }) {
+  const H = ({children})=><div style={{ fontSize:13,fontWeight:800,color:"#c084fc",marginTop:20,marginBottom:6 }}>{children}</div>;
+  const P = ({children})=><p style={{ fontSize:12,color:"#d1d5db",lineHeight:1.8,marginBottom:4 }}>{children}</p>;
+  return (
+    <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>🔒 プライバシーポリシー</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:16 }}>最終更新日：2026年5月30日</div>
+
+        <P>SAIDAN（以下「本サービス」）は、ユーザーのプライバシーを尊重し、個人情報を適切に管理します。</P>
+
+        <H>1. 収集する情報</H>
+        <P>・メールアドレス（アカウント登録時）</P>
+        <P>・グッズ・祭壇データ（クラウド同期を利用した場合）</P>
+        <P>・ユーザーがアップロードした画像</P>
+
+        <H>2. 利用目的</H>
+        <P>・サービスの提供・運営・改善</P>
+        <P>・ユーザーの識別・認証</P>
+        <P>・データのクラウド同期</P>
+
+        <H>3. 第三者への提供</H>
+        <P>以下のサービスを利用しており、これらへのデータ提供が発生します。</P>
+        <P>・<strong style={{ color:"#e2e8f0" }}>Supabase</strong>（認証・データ保管） — <a href="https://supabase.com/privacy" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>プライバシーポリシー</a></P>
+        <P>上記以外の第三者に個人情報を提供することはありません。</P>
+
+        <H>4. データの保管・削除</H>
+        <P>データはSupabaseのサーバーに保管されます。アカウント削除・データ消去のご要望はお問い合わせください。</P>
+
+        <H>5. ローカルストレージについて</H>
+        <P>本サービスはデータ保存のためにブラウザのlocalStorageを使用します。ブラウザの設定から削除できます。</P>
+
+        <H>6. 本ポリシーの変更</H>
+        <P>内容を変更する場合は本ページで告知します。継続利用をもって同意とみなします。</P>
+
+        <H>お問い合わせ</H>
+        <P>X（旧Twitter）: <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a></P>
+        <P>Email: <a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a></P>
+      </div>
+    </div>
+  );
+}

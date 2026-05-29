@@ -1,0 +1,25 @@
+{
+  "name": "SAIDAN｜推しグッズ祭壇メーカー",
+  "short_name": "SAIDAN",
+  "description": "推しグッズを並べて、自分だけの祭壇を作ろう",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a14",
+  "theme_color": "#0c0a14",
+  "lang": "ja",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
