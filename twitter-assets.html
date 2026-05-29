@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title>SAIDAN — Twitter Assets Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  *{ margin:0;padding:0;box-sizing:border-box; }
+  body{ background:#0c0a14;color:#f0e8ff;font-family:'Noto Sans JP',sans-serif;padding:40px 24px 80px; }
+  h1{ font-size:22px;font-weight:900;background:linear-gradient(135deg,#e879f9,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px; }
+  .subtitle{ font-size:13px;color:#6b7280;margin-bottom:48px; }
+  .asset{ margin-bottom:56px; }
+  .label{ font-size:13px;font-weight:700;color:#c084fc;margin-bottom:10px; }
+  .hint{ font-size:11px;color:#4b5563;margin-top:8px;line-height:1.7; }
+  canvas{ display:block;max-width:100%;border-radius:12px;border:1px solid rgba(232,121,249,0.15); }
+  .btns{ display:flex;gap:10px;margin-top:12px;flex-wrap:wrap; }
+  button{
+    padding:9px 22px;border-radius:10px;border:none;
+    background:linear-gradient(135deg,#e879f9,#818cf8);
+    color:#fff;font-size:12px;font-weight:700;cursor:pointer;
+    font-family:'Noto Sans JP',sans-serif;
+    transition:opacity .15s;
+  }
+  button:hover{ opacity:.85; }
+  .badge{ display:inline-block;font-size:10px;background:rgba(232,121,249,0.15);color:#e879f9;border:1px solid rgba(232,121,249,0.3);border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle; }
+</style>
+</head>
+<body>
+
+<h1>⛩ SAIDAN Twitter Assets</h1>
+<div class="subtitle">各画像を右クリック→「名前を付けて画像を保存」、またはダウンロードボタンで保存してください</div>
+
+<!-- Icon -->
+<div class="asset">
+  <div class="label">📷 プロフィールアイコン <span class="badge">400 × 400 px</span></div>
+  <canvas id="icon" width="400" height="400"></canvas>
+  <div class="btns">
+    <button onclick="dl('icon','saidan-icon.png')">⬇️ icon ダウンロード</button>
+  </div>
+  <div class="hint">※ Twitterは円形にトリミングされます。中央のデザインが重要です。</div>
+</div>
+
+<!-- Header -->
+<div class="asset">
+  <div class="label">🖼 ヘッダー画像 <span class="badge">1500 × 500 px</span></div>
+  <canvas id="header" width="1500" height="500"></canvas>
+  <div class="btns">
+    <button onclick="dl('header','saidan-header.png')">⬇️ header ダウンロード</button>
+  </div>
+  <div class="hint">※ モバイルでは両端がクリップされます。中央に重要な要素を配置しています。</div>
+</div>
+
+<script>
+// ── utilities ────────────────────────────────────────────────
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function drawTorii(ctx, x, y, scale, primaryColor, secondaryColor, accentColor){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  // kasagi (top bar)
+  ctx.fillStyle = primaryColor;
+  roundRect(ctx,-200,0,400,32,7); ctx.fill();
+  // nuki (second bar)
+  ctx.fillStyle = secondaryColor;
+  roundRect(ctx,-160,58,320,22,5); ctx.fill();
+  // left pillar
+  ctx.fillStyle = accentColor;
+  roundRect(ctx,-152,80,38,260,6); ctx.fill();
+  // right pillar
+  roundRect(ctx,114,80,38,260,6); ctx.fill();
+  // arch curve
+  ctx.strokeStyle = primaryColor; ctx.lineWidth = 5; ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.moveTo(-200,16); ctx.quadraticCurveTo(0,-50,200,16); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function star(ctx, x, y, r, color, alpha){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for(let i=0;i<10;i++){
+    const a = (i*Math.PI/5) - Math.PI/2;
+    const radius = i%2===0 ? r : r*0.42;
+    i===0 ? ctx.moveTo(x+Math.cos(a)*radius, y+Math.sin(a)*radius)
+           : ctx.lineTo(x+Math.cos(a)*radius, y+Math.sin(a)*radius);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function sparkle(ctx, x, y, size, color){
+  // 4-point diamond sparkle (✦)
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = size*0.15; ctx.lineCap = 'round';
+  const arms = [[0,-size],[size*0.45,0],[0,size],[-size*0.45,0]];
+  arms.forEach(([dx,dy])=>{
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x+dx, y+dy);
+    ctx.stroke();
+  });
+  // diagonal shorter arms
+  ctx.lineWidth = size*0.1;
+  const d = size*0.32;
+  [[-d,-d],[d,-d],[d,d],[-d,d]].forEach(([dx,dy])=>{
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x+dx, y+dy);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// ── ICON (400×400) ──────────────────────────────────────────
+function drawIcon(){
+  const canvas = document.getElementById('icon');
+  const ctx = canvas.getContext('2d');
+  const W=400, H=400;
+
+  // Background
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0e0b18'); bg.addColorStop(1,'#1c0d32');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  // Radial glow center
+  const gl = ctx.createRadialGradient(200,200,0,200,200,200);
+  gl.addColorStop(0,'rgba(232,121,249,0.18)');
+  gl.addColorStop(0.5,'rgba(129,140,248,0.07)');
+  gl.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = gl; ctx.fillRect(0,0,W,H);
+
+  // Torii gate — shifted down so arch fits
+  drawTorii(ctx, 200, 215, 0.72, '#e879f9','#a855f7','#c084fc');
+
+  // Gold star on top of arch
+  star(ctx, 200, 126, 15, '#fbbf24', 1);
+  // small sparkles around the gate
+  sparkle(ctx, 100, 155, 13, 'rgba(240,171,252,0.75)');
+  sparkle(ctx, 300, 155, 11, 'rgba(165,180,252,0.65)');
+  sparkle(ctx, 80,  300, 9,  'rgba(240,171,252,0.45)');
+  sparkle(ctx, 320, 300, 9,  'rgba(165,180,252,0.45)');
+  // scattered small stars
+  star(ctx, 60,  80,  7, '#fbbf24', 0.6);
+  star(ctx, 340, 90,  6, '#fbbf24', 0.5);
+  star(ctx, 340, 320, 5, '#fbbf24', 0.4);
+  star(ctx, 60,  320, 5, '#fbbf24', 0.4);
+
+  // "SAIDAN" text
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.shadowColor = 'rgba(232,121,249,0.7)'; ctx.shadowBlur = 18;
+  const tg = ctx.createLinearGradient(120,0,280,0);
+  tg.addColorStop(0,'#e879f9'); tg.addColorStop(1,'#818cf8');
+  ctx.fillStyle = tg;
+  ctx.font = "900 38px 'Arial Black', 'Noto Sans JP', sans-serif";
+  ctx.fillText('SAIDAN', 200, 365);
+  ctx.shadowBlur = 0;
+
+  // subtitle
+  ctx.fillStyle = '#7c6a9a';
+  ctx.font = "400 11px 'Noto Sans JP', sans-serif";
+  ctx.fillText('推しグッズ祭壇メーカー', 200, 387);
+}
+
+// ── HEADER (1500×500) ────────────────────────────────────────
+function drawHeader(){
+  const canvas = document.getElementById('header');
+  const ctx = canvas.getContext('2d');
+  const W=1500, H=500;
+
+  // Background
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0c0a14'); bg.addColorStop(0.4,'#170d2e');
+  bg.addColorStop(0.7,'#130820'); bg.addColorStop(1,'#0c0a14');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  // center glow
+  const cg = ctx.createRadialGradient(750,250,0,750,250,450);
+  cg.addColorStop(0,'rgba(232,121,249,0.12)');
+  cg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = cg; ctx.fillRect(0,0,W,H);
+
+  // left glow
+  const lg = ctx.createRadialGradient(250,250,0,250,250,350);
+  lg.addColorStop(0,'rgba(129,140,248,0.1)');
+  lg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = lg; ctx.fillRect(0,0,W,H);
+
+  // right glow
+  const rg = ctx.createRadialGradient(1250,250,0,1250,250,350);
+  rg.addColorStop(0,'rgba(232,121,249,0.07)');
+  rg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0,0,W,H);
+
+  // Stars scattered
+  const starsData = [
+    [80,55,14,1],[140,420,10,.7],[320,70,8,.5],[420,450,12,.8],
+    [1080,65,13,.9],[1200,410,9,.6],[1360,90,11,.8],[1440,440,14,1],
+    [680,40,7,.5],[820,460,8,.6],[560,420,6,.4],[940,35,7,.5],
+    [1500-60,200,5,.4],[60,200,5,.4]
+  ];
+  starsData.forEach(([x,y,r,a])=> star(ctx,x,y,r,'#fbbf24',a));
+
+  // Sparkles (4-point diamond style)
+  [
+    [265,75,18,'rgba(240,171,252,0.65)'],[1235,78,16,'rgba(165,180,252,0.55)'],
+    [185,415,13,'rgba(240,171,252,0.45)'],[1315,412,13,'rgba(165,180,252,0.45)'],
+    [405,148,11,'rgba(240,171,252,0.4)'],[1095,148,11,'rgba(165,180,252,0.4)'],
+    [510,440,10,'rgba(240,171,252,0.3)'],[990,445,10,'rgba(165,180,252,0.3)'],
+  ].forEach(([x,y,s,c])=> sparkle(ctx,x,y,s,c));
+
+  // Left torii (pink, full opacity)
+  ctx.globalAlpha = 0.85;
+  drawTorii(ctx, 230, 240, 0.52, '#e879f9','#a855f7','#c084fc');
+  ctx.globalAlpha = 1;
+
+  // Right torii (indigo, lower opacity)
+  ctx.globalAlpha = 0.5;
+  ctx.save(); ctx.scale(-1,1); ctx.translate(-W,0);
+  drawTorii(ctx, 230, 240, 0.44, '#818cf8','#6366f1','#a5b4fc');
+  ctx.restore();
+  ctx.globalAlpha = 1;
+
+  // Horizontal decorative line (above text)
+  const lineGrad = ctx.createLinearGradient(350,0,1150,0);
+  lineGrad.addColorStop(0,'rgba(232,121,249,0)');
+  lineGrad.addColorStop(0.3,'rgba(232,121,249,0.5)');
+  lineGrad.addColorStop(0.7,'rgba(129,140,248,0.5)');
+  lineGrad.addColorStop(1,'rgba(129,140,248,0)');
+  ctx.strokeStyle = lineGrad; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(350,145); ctx.lineTo(1150,145); ctx.stroke();
+
+  // ⛩ emoji (large, left of text)
+  ctx.font = '72px serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.fillText('⛩', 750, 175);
+
+  // Main title "SAIDAN"
+  ctx.shadowColor = 'rgba(232,121,249,0.6)'; ctx.shadowBlur = 40;
+  const titleGrad = ctx.createLinearGradient(430,0,1070,0);
+  titleGrad.addColorStop(0,'#e879f9');
+  titleGrad.addColorStop(0.5,'#d946ef');
+  titleGrad.addColorStop(1,'#818cf8');
+  ctx.fillStyle = titleGrad;
+  ctx.font = "900 128px 'Arial Black', 'Noto Sans JP', Arial, sans-serif";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('SAIDAN', 750, 320);
+  ctx.shadowBlur = 0;
+
+  // Subtitle
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = "700 26px 'Noto Sans JP', sans-serif";
+  ctx.fillText('推しグッズ祭壇メーカー', 750, 365);
+
+  // Horizontal line below title
+  ctx.strokeStyle = lineGrad; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(350,385); ctx.lineTo(1150,385); ctx.stroke();
+
+  // URL
+  ctx.fillStyle = '#374151';
+  ctx.font = "400 16px 'Noto Sans JP', Arial, sans-serif";
+  ctx.fillText('saidan-black.vercel.app', 750, 430);
+
+  // Bottom dots decoration
+  [710,730,750,770,790].forEach((x,i)=>{
+    ctx.fillStyle = i===2?'#e879f9':'rgba(232,121,249,0.3)';
+    ctx.beginPath(); ctx.arc(x,455,i===2?5:3,0,Math.PI*2); ctx.fill();
+  });
+}
+
+// Wait for fonts to load, then draw
+document.fonts.ready.then(() => {
+  drawIcon();
+  drawHeader();
+});
+
+function dl(id, filename){
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = document.getElementById(id).toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
