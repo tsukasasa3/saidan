@@ -1687,13 +1687,50 @@ function CollectionPage({ goods, counts, characters, isPro, onAdd, onUpdateStatu
   );
 }
 
+function GoodDetailModal({ good, onClose }) {
+  const [rotation,setRotation]=useState(0);
+  const [zoom,setZoom]=useState(1);
+  return (
+    <div style={{ ...S.overlay,zIndex:3000 }} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:360,padding:18 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+          <div style={{ fontSize:15,fontWeight:800,color:"#e879f9",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{good.name}</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer",flexShrink:0,marginLeft:8 }}>✕</button>
+        </div>
+        <div style={{ width:"100%",aspectRatio:"1/1",display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.04)",borderRadius:16,overflow:"hidden",marginBottom:16,position:"relative" }}>
+          {good.image
+            ?<img src={good.image} alt={good.name} style={{ maxWidth:"90%",maxHeight:"90%",objectFit:"contain",transform:`rotate(${rotation}deg) scale(${zoom})`,transition:"transform 0.15s",borderRadius:8,userSelect:"none" }}/>
+            :<div style={{ fontSize:80,transform:`rotate(${rotation}deg) scale(${zoom})`,transition:"transform 0.15s" }}>{good.emoji||"📦"}</div>
+          }
+        </div>
+        <div style={{ marginBottom:10 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:"#9ca3af",marginBottom:4 }}>
+            <span>🔄 回転</span><span style={{ fontWeight:700,color:"#e879f9" }}>{rotation}°</span>
+          </div>
+          <input type="range" min={-180} max={180} value={rotation} onChange={e=>setRotation(Number(e.target.value))}
+            style={{ width:"100%",accentColor:"#e879f9",cursor:"pointer" }}/>
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:"#9ca3af",marginBottom:4 }}>
+            <span>🔍 ズーム</span><span style={{ fontWeight:700,color:"#e879f9" }}>{Math.round(zoom*100)}%</span>
+          </div>
+          <input type="range" min={0.5} max={3} step={0.1} value={zoom} onChange={e=>setZoom(Number(e.target.value))}
+            style={{ width:"100%",accentColor:"#e879f9",cursor:"pointer" }}/>
+        </div>
+        <button onClick={()=>{setRotation(0);setZoom(1);}} style={{ width:"100%",padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#9ca3af",fontSize:12,cursor:"pointer",transition:"background 0.15s" }}>リセット</button>
+      </div>
+    </div>
+  );
+}
+
 function GoodCard({ good, count=1, characters, isPro, onStatusChange, onDelete, onCharChange }) {
   const st=STATUS[good.status];
   const [open,setOpen]=useState(false);
+  const [viewing,setViewing]=useState(false);
   const char=characters.find(c=>c.id===good.characterId);
   return (
     <div style={S.card}>
-      <div style={S.cardImgWrap}>
+      <div style={{ ...S.cardImgWrap,cursor:"zoom-in" }} onClick={()=>setViewing(true)}>
         {good.image?<img src={good.image} alt={good.name} style={S.cardImg}/>:<div style={S.cardEmoji}>{good.emoji||"📦"}</div>}
         <div style={{ ...S.badge,background:st.bg,color:st.color }}>{st.icon} {st.label}</div>
         {count>1 && <div style={{ position:"absolute",top:8,right:8,background:"rgba(232,121,249,0.9)",color:"#fff",borderRadius:12,padding:"2px 8px",fontSize:11,fontWeight:900 }}>×{count}</div>}
@@ -1728,6 +1765,7 @@ function GoodCard({ good, count=1, characters, isPro, onStatusChange, onDelete, 
         </div>
         <button onClick={onDelete} style={{ ...S.iconBtn,color:"#ef4444" }}>🗑</button>
       </div>
+      {viewing&&<GoodDetailModal good={good} onClose={()=>setViewing(false)}/>}
     </div>
   );
 }
