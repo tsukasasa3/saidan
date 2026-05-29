@@ -197,7 +197,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, lightId:null };
+  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, frameCustomColor:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -217,6 +217,7 @@ export default function App() {
   const [showShare, setShowShare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showMaterials, setShowMaterials]   = useState(false);
+  const [showBgPicker,  setShowBgPicker]    = useState(false);
   const [showRandomSets, setShowRandomSets] = useState(false);
   const [showAltarManager, setShowAltarManager] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
@@ -430,6 +431,7 @@ export default function App() {
             onOpenShare={()=>setShowShare(true)}
             onOpenAltarManager={()=>setShowAltarManager(true)}
             onOpenMaterials={()=>setShowMaterials(true)}
+            onOpenBgPicker={()=>setShowBgPicker(true)}
             onSwitchAltar={(id)=>setActiveAltarId(id)}
             onUpgrade={()=>setShowUpgrade(true)}
             onAutoArrange={()=>{
@@ -508,6 +510,7 @@ export default function App() {
       />}
       {showUpgrade && <UpgradeModal onUpgrade={upgradeToPro} onClose={()=>setShowUpgrade(false)} plan={plan} />}
       {showMaterials && <MaterialsModal altar={currentAltar} onUpdateAltar={(patch)=>updateAltar(currentAltar.id,patch)} canUseMaterial={canUseMaterial} onClose={()=>setShowMaterials(false)} />}
+      {showBgPicker  && <BgModal altar={currentAltar} onUpdateAltar={(patch)=>updateAltar(currentAltar.id,patch)} onClose={()=>setShowBgPicker(false)} />}
       {showAltarManager && <AltarManagerModal altars={altars} activeId={activeAltar?.id} isPro={isPro}
         onAdd={addAltar} onDelete={deleteAltar} onRename={renameAltar} onSwitch={(id)=>{setActiveAltarId(id);setShowAltarManager(false);}}
         onUpgrade={()=>{ setShowAltarManager(false); setShowUpgrade(true); }} onClose={()=>setShowAltarManager(false)} />}
@@ -1297,7 +1300,7 @@ function CharManagerModal({ characters, onAdd, onDelete, onClose }) {
 }
 
 // ─── Altar Page ───────────────────────────────────────────────
-function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingShared, onUpdateAltar, goodById, showToast, onOpenTemplates, onOpenShare, onOpenAltarManager, onOpenMaterials, onSwitchAltar, onUpgrade, onAutoArrange }) {
+function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingShared, onUpdateAltar, goodById, showToast, onOpenTemplates, onOpenShare, onOpenAltarManager, onOpenMaterials, onOpenBgPicker, onSwitchAltar, onUpgrade, onAutoArrange }) {
   const ownedGoods = goods.filter(g=>g.status==="owned"||g.status==="reserved");
   const shelf   = altar.shelf;
   const freeItems = altar.freeItems;
@@ -1499,7 +1502,8 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
-        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.bgMaterialId||altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
+        {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor?" ✓":""}</button>}
+        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
 
@@ -1509,7 +1513,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
-          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {/* Deco stickers on shelf */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
@@ -1556,7 +1560,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
-          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1580,7 +1584,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
-          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1603,7 +1607,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
-          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1632,7 +1636,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
-          <FrameOverlay materialId={altar.frameMaterialId}/>
+          <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {/* Deco stickers on free altar */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
@@ -1746,24 +1750,29 @@ function AnimatedBG({ materialId }) {
 }
 
 // ─── Frame Overlay ────────────────────────────────────────────
-function FrameOverlay({ materialId }) {
+function FrameOverlay({ materialId, frameCustomColor }) {
   if (!materialId) return null;
   const mat = MATERIALS.find(m=>m.id===materialId);
   if (!mat) return null;
-  const styles = {
-    fr_gold:   { border:"4px solid #f59e0b", boxShadow:"inset 0 0 20px rgba(245,158,11,0.3), 0 0 20px rgba(245,158,11,0.2)", borderRadius:18 },
-    fr_flower: { border:"4px solid #ec4899", boxShadow:"inset 0 0 20px rgba(236,72,153,0.2)", borderRadius:18, outline:"2px dashed rgba(236,72,153,0.4)", outlineOffset:4 },
-    fr_star:   { border:"3px solid #fcd34d", boxShadow:"inset 0 0 30px rgba(252,211,77,0.1), 0 0 15px rgba(252,211,77,0.3)", borderRadius:18 },
-    fr_ribbon: { border:"4px solid #f472b6", borderRadius:18, boxShadow:"0 0 0 2px rgba(244,114,182,0.3), inset 0 0 15px rgba(244,114,182,0.1)" },
-    fr_neon:   { border:"3px solid #818cf8", borderRadius:18, boxShadow:"0 0 12px #818cf8, 0 0 24px rgba(129,140,248,0.5), inset 0 0 20px rgba(129,140,248,0.1)", animation:"neonPulse 2s ease-in-out infinite alternate" },
-    fr_torii:  { border:"4px solid #dc2626", borderRadius:18, boxShadow:"inset 0 0 20px rgba(220,38,38,0.15), 0 0 15px rgba(220,38,38,0.2)" },
+  // hex → rgba helper for shadow colors
+  const toRgba = (hex, a) => {
+    if (!hex||!hex.startsWith("#")) return `rgba(200,200,200,${a})`;
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
   };
+  const c = frameCustomColor; // null → use default
+  const getStyles = () => ({
+    fr_simple: { border:`3px solid ${c||"rgba(255,255,255,0.45)"}`, borderRadius:18 },
+    fr_gold:   { border:`4px solid ${c||"#f59e0b"}`,  boxShadow:`inset 0 0 20px ${toRgba(c||"#f59e0b",0.25)}, 0 0 20px ${toRgba(c||"#f59e0b",0.2)}`, borderRadius:18 },
+    fr_star:   { border:`3px solid ${c||"#fcd34d"}`,  boxShadow:`inset 0 0 30px ${toRgba(c||"#fcd34d",0.1)}, 0 0 15px ${toRgba(c||"#fcd34d",0.3)}`, borderRadius:18 },
+    fr_torii:  { border:`4px solid ${c||"#dc2626"}`,  boxShadow:`inset 0 0 20px ${toRgba(c||"#dc2626",0.15)}, 0 0 15px ${toRgba(c||"#dc2626",0.2)}`, borderRadius:18 },
+  });
+  const styles = getStyles();
+  const accentColor = c || { fr_torii:"#dc2626", fr_gold:"#f59e0b", fr_star:"#fcd34d", fr_simple:"rgba(255,255,255,0.45)" }[materialId] || "#818cf8";
   return (
     <>
-      <style>{`@keyframes neonPulse{from{box-shadow:0 0 12px #818cf8,0 0 24px rgba(129,140,248,0.5),inset 0 0 20px rgba(129,140,248,0.1)}to{box-shadow:0 0 20px #818cf8,0 0 40px rgba(129,140,248,0.7),inset 0 0 30px rgba(129,140,248,0.2)}}`}</style>
-      <div style={{ position:"absolute",inset:0,pointerEvents:"none",zIndex:10,borderRadius:18,...(styles[materialId]||{}) }}/>
-      {materialId==="fr_flower"&&<div style={{ position:"absolute",inset:0,pointerEvents:"none",zIndex:11,display:"flex",alignItems:"center",justifyContent:"space-around",flexWrap:"wrap",padding:8,opacity:0.6 }}>{"🌸🌺🌼🌻🌷🌸🌺🌼".split("").map((e,i)=><span key={i} style={{ fontSize:14,position:"absolute",...[{top:4,left:4},{top:4,right:4},{bottom:4,left:4},{bottom:4,right:4},{top:4,left:"48%"},{bottom:4,left:"48%"},{top:"48%",left:4},{top:"48%",right:4}][i]||{} }}>{e}</span>)}</div>}
-      {materialId==="fr_torii"&&<div style={{ position:"absolute",top:0,left:0,right:0,height:8,background:"#dc2626",pointerEvents:"none",zIndex:11,borderRadius:"18px 18px 0 0" }}/>}
+      <div style={{ position:"absolute",inset:0,pointerEvents:"none",zIndex:10,borderRadius:18,...(styles[materialId]||{ border:`3px solid ${accentColor}`, borderRadius:18 }) }}/>
+      {materialId==="fr_torii"&&<div style={{ position:"absolute",top:0,left:0,right:0,height:8,background:c||"#dc2626",pointerEvents:"none",zIndex:11,borderRadius:"18px 18px 0 0" }}/>}
     </>
   );
 }
@@ -1785,10 +1794,104 @@ function LightOverlay({ materialId }) {
   );
 }
 
+// ─── Bg Modal ─────────────────────────────────────────────────
+function BgModal({ altar, onUpdateAltar, onClose }) {
+  const [colorInput, setColorInput] = useState(altar.bgCustomColor||"#1a0a2e");
+
+  const PRESET_COLORS = [
+    { hex:"#0c0a14", name:"ディープブラック" },
+    { hex:"#1a0a2e", name:"ミッドナイト" },
+    { hex:"#0a1628", name:"ネイビー" },
+    { hex:"#1a0505", name:"ダークレッド" },
+    { hex:"#052e16", name:"フォレスト" },
+    { hex:"#1c1000", name:"ディープゴールド" },
+    { hex:"#fdf2f8", name:"パステルピンク" },
+    { hex:"#f0f4ff", name:"ライトブルー" },
+    { hex:"#fffbeb", name:"クリーム" },
+    { hex:"#f5f5f5", name:"ホワイト" },
+    { hex:"#2d1b69", name:"パープル" },
+    { hex:"#134e4a", name:"ティール" },
+  ];
+
+  const applyCustomColor = (hex) => {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      onUpdateAltar({ bgCustomColor: hex, bgMaterialId: null });
+    }
+  };
+  const clearCustomColor = () => { onUpdateAltar({ bgCustomColor: null }); };
+  const isCustomColorActive = !!altar.bgCustomColor;
+
+  const bgItems = MATERIALS.filter(m=>m.type==="bg");
+  const isActive = (mat) => altar.bgMaterialId===mat.id;
+  const toggle = (mat) => {
+    onUpdateAltar({ bgMaterialId: altar.bgMaterialId===mat.id?null:mat.id, bgCustomColor: null });
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal,maxWidth:500 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+          <div style={{ fontSize:18,fontWeight:800,color:"#818cf8" }}>🌌 背景を選ぶ</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+
+        {/* Single color picker */}
+        <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${isCustomColorActive?"#22c55e":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10 }}>
+            <span style={{ fontSize:13,fontWeight:700,color:isCustomColorActive?"#22c55e":"#f0e8ff" }}>🎨 単色背景</span>
+            <span style={{ fontSize:9,background:"rgba(34,197,94,0.2)",color:"#22c55e",borderRadius:6,padding:"1px 6px",fontWeight:700 }}>無料・静止</span>
+            {isCustomColorActive&&<button onClick={clearCustomColor} style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ 解除</button>}
+          </div>
+          {/* Preset swatches */}
+          <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
+            {PRESET_COLORS.map(c=>(
+              <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
+                style={{ width:28,height:28,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.15)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
+                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
+                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+              />
+            ))}
+          </div>
+          {/* Custom hex input */}
+          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+            <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
+              style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
+            <input type="text" value={colorInput}
+              onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
+              placeholder="#000000" maxLength={7}
+              style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+            <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+          </div>
+        </div>
+
+        {/* Animated bg materials */}
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,maxHeight:280,overflowY:"auto" }}>
+          {bgItems.map(mat=>{
+            const active = isActive(mat);
+            return (
+              <div key={mat.id} onClick={()=>toggle(mat)}
+                style={{ borderRadius:12,padding:"12px 8px",textAlign:"center",cursor:"pointer",transition:"all 0.2s",position:"relative",
+                  background:active?"rgba(129,140,248,0.2)":"rgba(255,255,255,0.04)",
+                  border:`2px solid ${active?"#818cf8":"rgba(255,255,255,0.08)"}` }}>
+                {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#818cf8",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
+                {mat.image
+                  ? <img src={mat.image} alt={mat.name} style={{ width:44,height:44,objectFit:"contain",marginBottom:4,display:"block",margin:"0 auto 4px" }}/>
+                  : <div style={{ fontSize:28,marginBottom:4 }}>{mat.emoji}</div>}
+                <div style={{ fontSize:11,fontWeight:700,color:active?"#818cf8":"#f0e8ff" }}>{mat.name}</div>
+                <div style={{ fontSize:9,color:"#7c6a9a",marginTop:2 }}>{mat.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Materials Modal ──────────────────────────────────────────
 function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
-  const [tab, setTab] = useState("bg");
-  const [colorInput, setColorInput] = useState(altar.bgCustomColor||"#1a0a2e");
+  const [tab, setTab] = useState("frame");
+  const [frameColorInput, setFrameColorInput] = useState(altar.frameCustomColor||"#f59e0b");
   const [customDecoName, setCustomDecoName] = useState("");
   const [customDecoImg, setCustomDecoImg]   = useState(null);
   const customDecoRef = useRef(null);
@@ -1812,19 +1915,40 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
     setCustomDecoImg(null); setCustomDecoName("");
     alert("追加しました！祭壇上で位置を調整してください ✓");
   };
-  const TABS = [["bg","🌌 背景"],["frame","🖼 フレーム"],["deco","🎀 デコ"],["light","💡 ライト"]];
+  const TABS = [["frame","🖼 フレーム"],["deco","🎀 デコ"],["light","💡 ライト"]];
   const items = MATERIALS.filter(m=>m.type===tab);
 
+  // Frame color presets
+  const FRAME_PRESET_COLORS = [
+    { hex:"#f59e0b", name:"ゴールド" },
+    { hex:"#dc2626", name:"レッド" },
+    { hex:"#ec4899", name:"ピンク" },
+    { hex:"#8b5cf6", name:"パープル" },
+    { hex:"#3b82f6", name:"ブルー" },
+    { hex:"#10b981", name:"グリーン" },
+    { hex:"#f97316", name:"オレンジ" },
+    { hex:"#ffffff", name:"ホワイト" },
+    { hex:"#fcd34d", name:"イエロー" },
+    { hex:"#818cf8", name:"インディゴ" },
+    { hex:"#f0abfc", name:"ラベンダー" },
+    { hex:"#a1a1aa", name:"シルバー" },
+  ];
+
+  const applyFrameColor = (hex) => {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      onUpdateAltar({ frameCustomColor: hex });
+    }
+  };
+  const clearFrameColor = () => { onUpdateAltar({ frameCustomColor: null }); };
+  const isFrameColorActive = !!altar.frameCustomColor;
+
   const isActive = (mat) => {
-    if (mat.type==="bg")    return altar.bgMaterialId===mat.id;
     if (mat.type==="frame") return altar.frameMaterialId===mat.id;
     if (mat.type==="deco")  return (altar.decoItems||[]).some(d=>d.materialId===mat.id);
     if (mat.type==="light") return altar.lightId===mat.id;
   };
   const toggle = (mat) => {
     if (!canUseMaterial(mat)) return;
-    // selecting a material clears custom color
-    if (mat.type==="bg")    onUpdateAltar({bgMaterialId:altar.bgMaterialId===mat.id?null:mat.id, bgCustomColor:null});
     if (mat.type==="frame") onUpdateAltar({frameMaterialId: altar.frameMaterialId===mat.id?null:mat.id});
     if (mat.type==="light") onUpdateAltar({lightId:         altar.lightId===mat.id?null:mat.id});
     if (mat.type==="deco")  {
@@ -1833,34 +1957,10 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
       if (exists) {
         onUpdateAltar({decoItems: cur.filter(d=>d.materialId!==mat.id)});
       } else {
-        // Add new deco at center of altar
         onUpdateAltar({decoItems:[...cur,{id:newUid(),materialId:mat.id,x:200+Math.random()*200,y:120+Math.random()*100,scale:1.5,zIndex:(cur.length+1)*10}]});
       }
     }
   };
-  const applyCustomColor = (hex) => {
-    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-      onUpdateAltar({ bgCustomColor: hex, bgMaterialId: null }); // clear material when custom color applied
-    }
-  };
-  const clearCustomColor = () => { onUpdateAltar({ bgCustomColor: null }); };
-  const isCustomColorActive = !!altar.bgCustomColor;
-
-  // Preset solid colors
-  const PRESET_COLORS = [
-    { hex:"#0c0a14", name:"ディープブラック" },
-    { hex:"#1a0a2e", name:"ミッドナイト" },
-    { hex:"#0a1628", name:"ネイビー" },
-    { hex:"#1a0505", name:"ダークレッド" },
-    { hex:"#052e16", name:"フォレスト" },
-    { hex:"#1c1000", name:"ディープゴールド" },
-    { hex:"#fdf2f8", name:"パステルピンク" },
-    { hex:"#f0f4ff", name:"ライトブルー" },
-    { hex:"#fffbeb", name:"クリーム" },
-    { hex:"#f5f5f5", name:"ホワイト" },
-    { hex:"#2d1b69", name:"パープル" },
-    { hex:"#134e4a", name:"ティール" },
-  ];
 
   return (
     <div style={S.overlay} onClick={onClose}>
@@ -1878,19 +1978,18 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
           ))}
         </div>
 
-        {/* Single color picker (bg tab only, always free) */}
-        {tab==="bg"&&(
-          <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${isCustomColorActive?"#22c55e":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+        {/* Frame color picker (frame tab, only when a frame is selected) */}
+        {tab==="frame"&&altar.frameMaterialId&&(
+          <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${isFrameColorActive?"rgba(192,132,252,0.6)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
             <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10 }}>
-              <span style={{ fontSize:13,fontWeight:700,color:isCustomColorActive?"#22c55e":"#f0e8ff" }}>🎨 単色背景</span>
-              <span style={{ fontSize:9,background:"rgba(34,197,94,0.2)",color:"#22c55e",borderRadius:6,padding:"1px 6px",fontWeight:700 }}>無料・静止</span>
-              {isCustomColorActive&&<button onClick={clearCustomColor} style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ 解除</button>}
+              <span style={{ fontSize:13,fontWeight:700,color:isFrameColorActive?"#c084fc":"#f0e8ff" }}>🎨 フレームの色</span>
+              {isFrameColorActive&&<button onClick={clearFrameColor} style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ デフォルトに戻す</button>}
             </div>
             {/* Preset swatches */}
             <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
-              {PRESET_COLORS.map(c=>(
-                <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
-                  style={{ width:28,height:28,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.15)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
+              {FRAME_PRESET_COLORS.map(c=>(
+                <button key={c.hex} title={c.name} onClick={()=>{ setFrameColorInput(c.hex); applyFrameColor(c.hex); }}
+                  style={{ width:28,height:28,borderRadius:8,background:c.hex,border:`2px solid ${altar.frameCustomColor===c.hex?"#c084fc":"rgba(255,255,255,0.15)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
                   onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
                 />
@@ -1898,19 +1997,19 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
             </div>
             {/* Custom hex input */}
             <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-              <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
+              <input type="color" value={frameColorInput} onChange={e=>{ setFrameColorInput(e.target.value); applyFrameColor(e.target.value); }}
                 style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
-              <input type="text" value={colorInput}
-                onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
+              <input type="text" value={frameColorInput}
+                onChange={e=>{ setFrameColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyFrameColor(e.target.value); }}
                 placeholder="#000000" maxLength={7}
                 style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
-              <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+              <div style={{ width:36,height:36,borderRadius:8,background:frameColorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
             </div>
           </div>
         )}
 
         {/* Items grid */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,maxHeight:tab==="bg"?260:340,overflowY:"auto" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,maxHeight:340,overflowY:"auto" }}>
           {items.map(mat=>{
             const active = isActive(mat);
             return (
