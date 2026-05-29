@@ -255,8 +255,46 @@ function drawIcon(){
 }
 
 
+// ── ⛩️絵文字をSAIDANカラーで指定位置に描画するヘルパー ──────
+function drawEmojiTorii(ctx, x, y, size, alpha, flip){
+  return new Promise(resolve => {
+    const off = document.createElement('canvas');
+    off.width = size; off.height = size;
+    const octx = off.getContext('2d');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      <text x="${size/2}" y="${size*0.67}" font-size="${size*0.595}"
+        text-anchor="middle"
+        font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,serif">⛩️</text>
+    </svg>`;
+    const img = new Image();
+    img.onload = () => {
+      octx.drawImage(img, 0, 0);
+      octx.globalCompositeOperation = 'source-in';
+      const g = octx.createLinearGradient(0, 0, 0, size);
+      g.addColorStop(0,   '#f0abfc');
+      g.addColorStop(0.4, '#e879f9');
+      g.addColorStop(1,   '#818cf8');
+      octx.fillStyle = g;
+      octx.fillRect(0, 0, size, size);
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      if(flip){
+        // 右端を基準に左右反転: translate(W,0) → scale(-1,1) → drawImage(off, xLeft, y)
+        // → 画面上では x = W - xLeft - size の位置に表示される
+        ctx.translate(ctx.canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(off, x, y);
+      ctx.restore();
+      resolve();
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+
 // ── HEADER (1500 × 500) ──────────────────────────────────────
-function drawHeader(){
+async function drawHeader(){
   const canvas = document.getElementById('header');
   const ctx = canvas.getContext('2d');
   const W=1500, H=500;
@@ -286,65 +324,53 @@ function drawHeader(){
     [260,72,17,'rgba(240,171,252,0.6)'],[1240,75,15,'rgba(165,180,252,0.55)'],
     [182,418,12,'rgba(240,171,252,0.42)'],[1318,415,12,'rgba(165,180,252,0.42)'],
     [408,145,10,'rgba(240,171,252,0.35)'],[1092,145,10,'rgba(165,180,252,0.35)'],
-    [508,440,9,'rgba(240,171,252,0.28)'],[992,442,9,'rgba(165,180,252,0.28)'],
   ].forEach(([x,y,s,c])=> sparkle4(ctx,x,y,s,c));
 
-  // ── Left torii ──
-  drawTorii(ctx, 220, 310, 0.56, '#e879f9','#a855f7','#c084fc', 0.9);
-
-  // ── Right torii (mirrored) ──
-  ctx.save();
-  ctx.scale(-1,1); ctx.translate(-W,0);
-  drawTorii(ctx, 220, 310, 0.50, '#818cf8','#6366f1','#a5b4fc', 0.6);
-  ctx.restore();
+  // ── 左右に⛩️絵文字 (SAIDANカラー) ──
+  const toriiSize = 320;
+  await Promise.all([
+    drawEmojiTorii(ctx,  30, H/2 - toriiSize/2, toriiSize, 0.9, false), // 左
+    drawEmojiTorii(ctx, 30, H/2 - toriiSize/2, toriiSize, 0.65, true),  // 右(反転)
+  ]);
 
   // Decorative line above title
-  const lineG=ctx.createLinearGradient(360,0,1140,0);
+  const lineG=ctx.createLinearGradient(420,0,1080,0);
   lineG.addColorStop(0,'rgba(232,121,249,0)');
   lineG.addColorStop(0.3,'rgba(232,121,249,0.5)');
   lineG.addColorStop(0.7,'rgba(129,140,248,0.5)');
   lineG.addColorStop(1,'rgba(129,140,248,0)');
   ctx.strokeStyle=lineG; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(360,150); ctx.lineTo(1140,150); ctx.stroke();
-
-  // ⛩ above title
-  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  ctx.font='60px serif';
-  ctx.fillText('⛩',750,185);
+  ctx.beginPath(); ctx.moveTo(420,148); ctx.lineTo(1080,148); ctx.stroke();
 
   // Main "SAIDAN" title
   ctx.shadowColor='rgba(232,121,249,0.6)'; ctx.shadowBlur=45;
   const tg=ctx.createLinearGradient(420,0,1080,0);
   tg.addColorStop(0,'#e879f9'); tg.addColorStop(0.55,'#d946ef'); tg.addColorStop(1,'#818cf8');
   ctx.fillStyle=tg;
-  ctx.font="900 130px 'Arial Black','Noto Sans JP',Arial,sans-serif";
-  ctx.fillText('SAIDAN',750,328);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.font="900 148px 'Arial Black','Noto Sans JP',Arial,sans-serif";
+  ctx.fillText('SAIDAN',750,340);
   ctx.shadowBlur=0;
 
   // Subtitle
   ctx.fillStyle='#9ca3af';
   ctx.font="700 26px 'Noto Sans JP',sans-serif";
-  ctx.fillText('推しグッズ祭壇メーカー',750,374);
+  ctx.fillText('推しグッズ祭壇メーカー',750,385);
 
   // Decorative line below
   ctx.strokeStyle=lineG; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(360,394); ctx.lineTo(1140,394); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(420,405); ctx.lineTo(1080,405); ctx.stroke();
 
   // URL
   ctx.fillStyle='#374151';
   ctx.font="400 16px 'Noto Sans JP',Arial,sans-serif";
-  ctx.fillText('saidan-black.vercel.app',750,430);
-
-  // Center dots
-  [700,722,744,766,788].forEach((x,i)=>{
-    ctx.fillStyle=i===2?'#e879f9':'rgba(232,121,249,0.28)';
-    ctx.beginPath(); ctx.arc(x,456,i===2?5:3,0,Math.PI*2); ctx.fill();
-  });
+  ctx.fillText('saidan-black.vercel.app',750,440);
 }
 
 
 // ── Run ──────────────────────────────────────────────────────
 document.fonts.ready.then(()=>{ drawIcon(); drawHeader(); });
+
 
 function dl(id,filename){
   const a=document.createElement('a');
