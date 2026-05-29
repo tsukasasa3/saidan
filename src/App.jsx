@@ -77,10 +77,10 @@ function getSession() {
 
 // Save user data to Supabase
 async function saveToCloud(userId, data) {
-  // Upsert into user_data table
-  await sbFetch("/rest/v1/user_data", {
+  // Upsert: on_conflict=user_id で既存行をUPDATE、なければINSERT
+  await sbFetch("/rest/v1/user_data?on_conflict=user_id", {
     method:"POST",
-    headers:{"Prefer":"resolution=merge-duplicates"},
+    headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},
     body: JSON.stringify({user_id:userId, data:JSON.stringify(data), updated_at:new Date().toISOString()})
   });
 }
@@ -338,7 +338,9 @@ export default function App() {
         const sess = getSession();
         if (sess?.user?.id) {
           const cloudData = await loadFromCloud(sess.user.id);
-          if (cloudData) { applyData(cloudData); setLoaded(true); return; }
+          // クラウドにグッズや祭壇データがある場合のみ上書き（空データで上書きしない）
+          const hasCloudData = cloudData && (cloudData.goods?.length > 0 || cloudData.altars?.some(a => a.shelf?.flat().some(Boolean)));
+          if (hasCloudData) { applyData(cloudData); setLoaded(true); return; }
         }
         // Fall back to local storage
         const raw = localStorage.getItem(STORAGE_KEY);
