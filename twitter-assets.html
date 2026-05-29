@@ -219,14 +219,16 @@ function drawIcon(){
   ctx.fillStyle='#0c0a14';
   ctx.fillRect(0,0,W,H);
 
-  // Subtle center glow (very soft)
-  const gl = ctx.createRadialGradient(200,200,0,200,200,180);
-  gl.addColorStop(0,'rgba(255,255,255,0.05)');
-  gl.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
-
-  // White torii — centered, large, clean silhouette
-  drawTorii(ctx, 200, 210, 0.88, '#ffffff', '#ffffff', '#ffffff');
+  // ⛩ emoji via SVG (ensures emoji renders correctly on all browsers)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">
+    <rect width="400" height="400" fill="#0c0a14"/>
+    <text x="200" y="270" font-size="240"
+      text-anchor="middle" dominant-baseline="middle"
+      font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,serif">⛩️</text>
+  </svg>`;
+  const img = new Image();
+  img.onload = () => ctx.drawImage(img, 0, 0);
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
 
