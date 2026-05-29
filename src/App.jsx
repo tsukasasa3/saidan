@@ -3050,10 +3050,17 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
     onClose();
   };
 
-  // Image mode tabs: "欲しい"なら "emoji" と "url" を優先表示
+  // 「持ってる」は画像アップロードのみ・タブ非表示
+  useEffect(()=>{
+    if(status==="owned") setImgMode("upload");
+  },[status]);
+
+  // Image mode tabs: "欲しい"なら "emoji" と "url" を優先表示、"持ってる"は非表示
   const imgTabs = status==="wanted"
     ? [["emoji","アイコン"],["url","公式URL"],["upload","画像"]]
-    : [["emoji","アイコン"],["upload","画像"],["url","公式URL"]];
+    : status==="owned"
+      ? null // タブ非表示
+      : [["emoji","アイコン"],["upload","画像"],["url","公式URL"]];
 
   return (
     <div style={S.overlay} onClick={onClose}>
@@ -3072,12 +3079,17 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
           ))}
         </div>
 
-        {/* Image mode tabs */}
-        <div style={{ display:"flex",gap:6,marginBottom:12 }}>
-          {imgTabs.map(([m,l])=>(
-            <button key={m} onClick={()=>setImgMode(m)} style={{ flex:1,padding:"6px",borderRadius:10,border:`1px solid ${imgMode===m?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:imgMode===m?"rgba(232,121,249,0.15)":"transparent",color:imgMode===m?"#e879f9":"#9ca3af",fontSize:11,fontWeight:600,cursor:"pointer" }}>{l}</button>
-          ))}
-        </div>
+        {/* Image mode tabs（「持ってる」は非表示） */}
+        {status==="owned"
+          ? <div style={{ fontSize:11,color:"#a78bfa",marginBottom:10,padding:"6px 10px",background:"rgba(167,139,250,0.08)",borderRadius:10,border:"1px solid rgba(167,139,250,0.2)" }}>
+              📷 持っているグッズは画像アップロードが必要です
+            </div>
+          : imgTabs && <div style={{ display:"flex",gap:6,marginBottom:12 }}>
+              {imgTabs.map(([m,l])=>(
+                <button key={m} onClick={()=>setImgMode(m)} style={{ flex:1,padding:"6px",borderRadius:10,border:`1px solid ${imgMode===m?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:imgMode===m?"rgba(232,121,249,0.15)":"transparent",color:imgMode===m?"#e879f9":"#9ca3af",fontSize:11,fontWeight:600,cursor:"pointer" }}>{l}</button>
+              ))}
+            </div>
+        }
 
         {/* Emoji / icon */}
         {imgMode==="emoji" && (<>
