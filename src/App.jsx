@@ -2486,6 +2486,10 @@ function MaterialsModal({ altar, onUpdateAltar, isPremium, purchasedMaterials, o
               <div style={{ flex:1,display:"flex",flexDirection:"column",gap:6 }}>
                 <input value={customDecoName} onChange={e=>setCustomDecoName(e.target.value)} placeholder="名前（省略可）" style={{ ...S.input,padding:"6px 10px",fontSize:12 }} maxLength={20}/>
                 <div style={{ fontSize:9,color:"#6b7280",lineHeight:1.5 }}>PNG推奨・透過対応・3MB以下<br/>アイビスペイントで書き出したものをそのまま使えます</div>
+                <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#a5b4fc",lineHeight:1.6 }}>
+                  💡 <strong style={{ color:"#c7d2fe" }}>素材をお探しですか？</strong><br/>
+                  <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO（sozaino.site）</a> はVTuber向けフリー素材サイトです。商用利用可・登録不要。
+                </div>
                 <button onClick={addCustomDeco} disabled={!customDecoImg}
                   style={{ padding:"6px",borderRadius:8,border:"none",background:customDecoImg?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.06)",color:customDecoImg?"#fff":"#4b5563",fontSize:11,fontWeight:700,cursor:customDecoImg?"pointer":"default" }}>
                   ＋ 祭壇に追加
@@ -3135,10 +3139,6 @@ function AddModal({ onClose, onAdd, characters, isPro }) {
                   : <><div style={{ fontSize:26,marginBottom:5 }}>📷</div><div style={{ fontSize:12 }}>タップして画像を選択（5MB以下）</div></>
               }
               <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display:"none" }}/>
-            </div>
-            <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:10,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#a5b4fc",lineHeight:1.7 }}>
-              💡 <strong style={{ color:"#c7d2fe" }}>素材をお探しですか？</strong><br/>
-              <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO（sozaino.site）</a> はVTuber向けフリー素材サイトです。商用利用可・登録不要でダウンロードして、こちらにアップロードして使えます。
             </div>
           </>
         )}
