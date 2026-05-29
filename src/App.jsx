@@ -334,12 +334,12 @@ export default function App() {
     saveTimer.current = setTimeout(async()=>{
       try {
         const data = {plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets,bouquets,customFlowers};
-        // Always save locally
+        // Always save locally (critical — error here shows failure)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        // Also save to cloud if logged in
+        // Also save to cloud if logged in (non-fatal — failure is silently ignored)
         const sess = getSession();
         if (sess?.user?.id) {
-          await saveToCloud(sess.user.id, data);
+          try { await saveToCloud(sess.user.id, data); } catch {}
         }
         setSaveStatus("saved"); setTimeout(()=>setSaveStatus(null),2000);
       } catch { setSaveStatus("error"); setTimeout(()=>setSaveStatus(null),3000); }
