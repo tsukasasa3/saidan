@@ -553,7 +553,18 @@ export default function App() {
             showToast("ログインしました（同期エラー）");
           }
         }}
-        onLogout={async()=>{ await signOut(); setSession(null); setShowAuth(false); showToast("ログアウトしました"); }}
+        onLogout={async()=>{
+          await signOut();
+          setSession(null);
+          setShowAuth(false);
+          // ログアウト後はローカルデータに切り替え
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) { applyData(JSON.parse(raw)); }
+            else { const a=makeAltar(); setAltars([a]); setActiveAltarId(a.id); setGoods([]); setCharacters([]); }
+          } catch { const a=makeAltar(); setAltars([a]); setActiveAltarId(a.id); }
+          showToast("ログアウトしました");
+        }}
         onClose={()=>setShowAuth(false)}
       />}
       {showUpgrade && <UpgradeModal onUpgrade={upgradeToPro} onUpgradePremium={upgradeToPremium} onClose={()=>setShowUpgrade(false)} plan={plan} />}
