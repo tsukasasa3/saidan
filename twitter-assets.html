@@ -215,48 +215,18 @@ function drawIcon(){
   const ctx = canvas.getContext('2d');
   const W=400, H=400;
 
-  // Background
-  const bg = ctx.createLinearGradient(0,0,W,H);
-  bg.addColorStop(0,'#0e0b1a'); bg.addColorStop(1,'#1c0d35');
-  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  // Dark background
+  ctx.fillStyle='#0c0a14';
+  ctx.fillRect(0,0,W,H);
 
-  // Center glow
-  const gl = ctx.createRadialGradient(200,210,0,200,210,210);
-  gl.addColorStop(0,'rgba(232,121,249,0.22)');
-  gl.addColorStop(0.6,'rgba(129,140,248,0.06)');
+  // Subtle center glow (very soft)
+  const gl = ctx.createRadialGradient(200,200,0,200,200,180);
+  gl.addColorStop(0,'rgba(255,255,255,0.05)');
   gl.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
 
-  // Background stars
-  star5(ctx, 55,  60,  8,  '#fbbf24', 0.65);
-  star5(ctx, 340, 55,  7,  '#fbbf24', 0.55);
-  star5(ctx, 60,  340, 6,  '#fbbf24', 0.45);
-  star5(ctx, 345, 335, 7,  '#fbbf24', 0.50);
-  star5(ctx, 200, 42,  10, '#fbbf24', 0.75);
-
-  // Sparkles
-  sparkle4(ctx,  90, 155, 14, 'rgba(240,171,252,0.7)');
-  sparkle4(ctx, 310, 155, 12, 'rgba(165,180,252,0.65)');
-  sparkle4(ctx,  75, 295, 10, 'rgba(240,171,252,0.4)');
-  sparkle4(ctx, 325, 295, 10, 'rgba(165,180,252,0.4)');
-
-  // Torii gate — centered at (200, 235), scale 0.76
-  drawTorii(ctx, 200, 235, 0.76, '#e879f9', '#a855f7', '#c084fc');
-
-  // SAIDAN text (glowing)
-  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor='rgba(232,121,249,0.7)'; ctx.shadowBlur=22;
-  const tg=ctx.createLinearGradient(110,0,290,0);
-  tg.addColorStop(0,'#e879f9'); tg.addColorStop(1,'#818cf8');
-  ctx.fillStyle=tg;
-  ctx.font="900 40px 'Arial Black','Noto Sans JP',sans-serif";
-  ctx.fillText('SAIDAN',200,368);
-  ctx.shadowBlur=0;
-
-  // Subtitle
-  ctx.fillStyle='#7c6a9a';
-  ctx.font="400 11px 'Noto Sans JP',sans-serif";
-  ctx.fillText('推しグッズ祭壇メーカー',200,388);
+  // White torii — centered, large, clean silhouette
+  drawTorii(ctx, 200, 210, 0.88, '#ffffff', '#ffffff', '#ffffff');
 }
 
 
