@@ -215,19 +215,42 @@ function drawIcon(){
   const ctx = canvas.getContext('2d');
   const W=400, H=400;
 
-  // Dark background
-  ctx.fillStyle='#0c0a14';
-  ctx.fillRect(0,0,W,H);
+  // Step1: 絵文字を透明背景のオフスクリーンCanvasに描画
+  const off = document.createElement('canvas');
+  off.width=W; off.height=H;
+  const octx = off.getContext('2d');
 
-  // ⛩ emoji via SVG (ensures emoji renders correctly on all browsers)
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">
-    <rect width="400" height="400" fill="#0c0a14"/>
-    <text x="200" y="270" font-size="240"
-      text-anchor="middle" dominant-baseline="middle"
+    <text x="200" y="268" font-size="238"
+      text-anchor="middle"
       font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,serif">⛩️</text>
   </svg>`;
   const img = new Image();
-  img.onload = () => ctx.drawImage(img, 0, 0);
+  img.onload = () => {
+    octx.drawImage(img, 0, 0);
+
+    // Step2: source-in でSAIDANカラー(ピンク→パープル)に塗り替え
+    octx.globalCompositeOperation = 'source-in';
+    const g = octx.createLinearGradient(0, 80, W, H);
+    g.addColorStop(0,   '#f0abfc'); // 明るめピンク（笠木トップ）
+    g.addColorStop(0.4, '#e879f9'); // ピンク
+    g.addColorStop(1,   '#818cf8'); // パープル（柱の下）
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, W, H);
+    octx.globalCompositeOperation = 'source-over';
+
+    // Step3: 暗い背景 + 色変換済み絵文字を合成
+    ctx.fillStyle = '#0c0a14';
+    ctx.fillRect(0, 0, W, H);
+
+    // 中心にほんのりグロー
+    const gl = ctx.createRadialGradient(200,200,0,200,200,190);
+    gl.addColorStop(0,'rgba(232,121,249,0.18)');
+    gl.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
+
+    ctx.drawImage(off, 0, 0);
+  };
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
