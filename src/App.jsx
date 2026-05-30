@@ -197,7 +197,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, frameMaterialId:null, frameCustomColor:null, lightId:null };
+  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, bgCustomImage:null, frameMaterialId:null, frameCustomColor:null, frameCustomImage:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -1502,8 +1502,8 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&altarMode==="shelf"&&<ShelfStylePicker currentId={altar.shelfStyleId||"default"} isPremium={isPremium} onChange={id=>onUpdateAltar({shelfStyleId:id})} />}
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
-        {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor||altar.customColors?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor||altar.customColors?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor||altar.customColors?" ✓":""}</button>}
-        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
+        {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?" ✓":""}</button>}
+        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
 
@@ -1512,8 +1512,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
+          {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
+          {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {/* Deco stickers on shelf */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
@@ -1559,8 +1561,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative",minHeight:360 }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
+          {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
+          {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1583,8 +1587,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
+          {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
+          {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1606,8 +1612,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
+          {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
+          {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
@@ -1635,8 +1643,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
+          {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
+          {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           {/* Deco stickers on free altar */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
@@ -1848,6 +1858,14 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
     setIsDarkMode(baseTemplate.dark!==false);
   };
 
+  // ── 画像アップロード（アニメタブ内）──
+  const bgImgRef = useRef(null);
+  const handleBgImgFile = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 5*1024*1024) { alert("5MB以下にしてください"); return; }
+    onUpdateAltar({ bgCustomImage: await readFileAsDataURL(f) });
+  };
+
   // ── アニメ背景タブ ──
   const bgItems = MATERIALS.filter(m=>m.type==="bg");
   const isBgMatActive = (mat) => altar.bgMaterialId===mat.id;
@@ -1941,7 +1959,29 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
 
         {/* ── アニメ背景タブ ── */}
         {bgTab==="anim"&&(
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8 }}>
+          <div>
+            {/* 画像アップロード */}
+            <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${altar.bgCustomImage?"rgba(129,140,248,0.5)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+              <div style={{ fontSize:12,fontWeight:700,color:"#818cf8",marginBottom:8 }}>📁 背景画像をアップロード</div>
+              <div style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
+                <div style={{ width:72,height:72,borderRadius:10,border:"2px dashed rgba(129,140,248,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,0.02)" }}
+                  onClick={()=>bgImgRef.current?.click()}>
+                  {altar.bgCustomImage
+                    ? <img src={altar.bgCustomImage} alt="bg" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                    : <div style={{ textAlign:"center",color:"#7c6a9a",fontSize:10 }}>📷<br/>選択</div>}
+                  <input ref={bgImgRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleBgImgFile} style={{ display:"none" }}/>
+                </div>
+                <div style={{ flex:1,display:"flex",flexDirection:"column",gap:6 }}>
+                  <div style={{ fontSize:9,color:"#6b7280",lineHeight:1.5 }}>PNG/JPG/WebP・5MB以下<br/>透過PNGはそのまま使えます</div>
+                  <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#a5b4fc",lineHeight:1.6 }}>
+                    💡 <a href="https://okimono.net/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKIMONO</a> や <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO</a> でフリー素材を探せます
+                  </div>
+                  {altar.bgCustomImage&&<button onClick={()=>onUpdateAltar({bgCustomImage:null})} style={{ padding:"4px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.3)",background:"transparent",color:"#ef4444",fontSize:11,cursor:"pointer" }}>✕ 削除</button>}
+                </div>
+              </div>
+            </div>
+            {/* プリセット背景グリッド */}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8 }}>
             {bgItems.map(mat=>{
               const active = isBgMatActive(mat);
               return (
@@ -1958,6 +1998,7 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>
@@ -1971,7 +2012,14 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
   const [frameColorInput, setFrameColorInput] = useState(altar.frameCustomColor||"#f59e0b");
   const [customDecoName, setCustomDecoName] = useState("");
   const [customDecoImg, setCustomDecoImg]   = useState(null);
-  const customDecoRef = useRef(null);
+  const customDecoRef  = useRef(null);
+  const customFrameRef = useRef(null);
+
+  const handleCustomFrameFile = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 5*1024*1024) { alert("5MB以下にしてください"); return; }
+    onUpdateAltar({ frameCustomImage: await readFileAsDataURL(f) });
+  };
 
   const handleCustomDecoFile = async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -2081,6 +2129,29 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
                 placeholder="#000000" maxLength={7}
                 style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
               <div style={{ width:36,height:36,borderRadius:8,background:frameColorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+            </div>
+          </div>
+        )}
+
+        {/* Frame image upload (frame tab) */}
+        {tab==="frame"&&(
+          <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${altar.frameCustomImage?"rgba(192,132,252,0.5)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+            <div style={{ fontSize:12,fontWeight:700,color:"#c084fc",marginBottom:8 }}>📁 フレーム画像をアップロード</div>
+            <div style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
+              <div style={{ width:72,height:72,borderRadius:10,border:"2px dashed rgba(192,132,252,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,0.02)" }}
+                onClick={()=>customFrameRef.current?.click()}>
+                {altar.frameCustomImage
+                  ? <img src={altar.frameCustomImage} alt="frame" style={{ width:"100%",height:"100%",objectFit:"contain" }}/>
+                  : <div style={{ textAlign:"center",color:"#7c6a9a",fontSize:10 }}>📷<br/>選択</div>}
+                <input ref={customFrameRef} type="file" accept="image/png,image/webp,image/gif" onChange={handleCustomFrameFile} style={{ display:"none" }}/>
+              </div>
+              <div style={{ flex:1,display:"flex",flexDirection:"column",gap:6 }}>
+                <div style={{ fontSize:9,color:"#6b7280",lineHeight:1.5 }}>透過PNG推奨・5MB以下<br/>祭壇の枠に重ねて表示されます</div>
+                <div style={{ background:"rgba(192,132,252,0.07)",border:"1px solid rgba(192,132,252,0.2)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#d8b4fe",lineHeight:1.6 }}>
+                  💡 <a href="https://okimono.net/" target="_blank" rel="noreferrer" style={{ color:"#c084fc",fontWeight:700 }}>OKIMONO</a> や <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#c084fc",fontWeight:700 }}>OKUMONO</a> でフリー素材を探せます
+                </div>
+                {altar.frameCustomImage&&<button onClick={()=>onUpdateAltar({frameCustomImage:null})} style={{ padding:"4px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.3)",background:"transparent",color:"#ef4444",fontSize:11,cursor:"pointer" }}>✕ 削除</button>}
+              </div>
             </div>
           </div>
         )}
