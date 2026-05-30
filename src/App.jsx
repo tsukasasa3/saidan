@@ -98,10 +98,10 @@ const FREE_ALTAR_LIMIT = 1;
 // ── Materials catalog（すべて無料）────────────────────────────
 const MATERIALS = [
   // ── 背景 ──────────────────────────────────────────────────
-  { id:"bg_static_night",  type:"bg", name:"星空",     emoji:"🌌", tier:"free", animated:false, desc:"静かな夜空",       animation:null },
-  { id:"bg_static_pastel", type:"bg", name:"パステル", emoji:"🌸", tier:"free", animated:false, desc:"やわらかいグラデ", animation:null },
-  { id:"bg_static_dark",   type:"bg", name:"ダーク",   emoji:"🖤", tier:"free", animated:false, desc:"シックな暗闇",     animation:null },
-  { id:"bg_static_gold",   type:"bg", name:"ゴールド", emoji:"✨", tier:"free", animated:false, desc:"豪華な金色",       animation:null },
+  { id:"bg_static_night",  type:"bg", name:"星空",     emoji:"🌌", tier:"free", animated:false, desc:"静かな夜空",       animation:null, bg:"linear-gradient(180deg,#08061a,#0d1a4a)" },
+  { id:"bg_static_pastel", type:"bg", name:"パステル", emoji:"🌸", tier:"free", animated:false, desc:"やわらかいグラデ", animation:null, bg:"linear-gradient(180deg,#fce4f0,#e0f2fe)" },
+  { id:"bg_static_dark",   type:"bg", name:"ダーク",   emoji:"🖤", tier:"free", animated:false, desc:"シックな暗闇",     animation:null, bg:"linear-gradient(180deg,#09090b,#1c1917)" },
+  { id:"bg_static_gold",   type:"bg", name:"ゴールド", emoji:"✨", tier:"free", animated:false, desc:"豪華な金色",       animation:null, bg:"linear-gradient(180deg,#1c1000,#3b1f00)" },
   // ── フレーム ──────────────────────────────────────────────
   { id:"fr_simple", type:"frame", name:"シンプル", emoji:"⬜", tier:"free", animated:false, desc:"細いシンプルな枠"   },
   { id:"fr_gold",   type:"frame", name:"ゴールド", emoji:"🪙", tier:"free", animated:false, desc:"クラシックな金縁"   },
@@ -1509,7 +1509,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* Shelf mode */}
       {altarMode==="shelf"&&(
-        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
@@ -1556,7 +1556,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* ── Hina mode ── */}
       {altarMode==="hina"&&(
-        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative",minHeight:360 }}>
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative",minHeight:360 }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
@@ -1580,7 +1580,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* ── Showcase mode ── */}
       {altarMode==="showcase"&&(
-        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
@@ -1603,7 +1603,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* ── Flat mode ── */}
       {altarMode==="flat"&&(
-        <div style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
+        <div style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,marginBottom:16,overflow:"hidden",position:"relative" }}>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           <LightOverlay materialId={altar.lightId}/>
@@ -1631,7 +1631,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
 
       {/* Free mode */}
       {altarMode==="free"&&(
-        <div ref={freeRef} onClick={()=>setSelectedFree(null)} style={{ ...S.altarBg,background:altar.bgCustomColor||template.bg,border:`1px solid ${template.border}`,height:380,position:"relative",overflow:"hidden",cursor:draggingFree?"grabbing":"default",marginBottom:16 }}>
+        <div ref={freeRef} onClick={()=>setSelectedFree(null)} style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,height:380,position:"relative",overflow:"hidden",cursor:draggingFree?"grabbing":"default",marginBottom:16 }}>
           <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
