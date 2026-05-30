@@ -1976,6 +1976,9 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
                   <div style={{ background:"rgba(129,140,248,0.07)",border:"1px solid rgba(129,140,248,0.2)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#a5b4fc",lineHeight:1.6 }}>
                     💡 <a href="https://okimono.net/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKIMONO</a> や <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO</a> でフリー素材を探せます
                   </div>
+                  <div style={{ background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.25)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#fbbf24",lineHeight:1.6 }}>
+                    ⚠️ アップロードする画像は、<strong>商用利用可のフリー素材・自作画像</strong>など、使用権のあるものをご使用ください。他者の著作物の無断使用は禁止です。
+                  </div>
                   {altar.bgCustomImage&&<button onClick={()=>onUpdateAltar({bgCustomImage:null})} style={{ padding:"4px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.3)",background:"transparent",color:"#ef4444",fontSize:11,cursor:"pointer" }}>✕ 削除</button>}
                 </div>
               </div>
@@ -2149,6 +2152,9 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, onClose }) {
                 <div style={{ fontSize:9,color:"#6b7280",lineHeight:1.5 }}>透過PNG推奨・5MB以下<br/>祭壇の枠に重ねて表示されます</div>
                 <div style={{ background:"rgba(192,132,252,0.07)",border:"1px solid rgba(192,132,252,0.2)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#d8b4fe",lineHeight:1.6 }}>
                   💡 <a href="https://okimono.net/" target="_blank" rel="noreferrer" style={{ color:"#c084fc",fontWeight:700 }}>OKIMONO</a> や <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#c084fc",fontWeight:700 }}>OKUMONO</a> でフリー素材を探せます
+                </div>
+                <div style={{ background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.25)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#fbbf24",lineHeight:1.6 }}>
+                  ⚠️ アップロードする画像は、<strong>商用利用可のフリー素材・自作画像</strong>など、使用権のあるものをご使用ください。他者の著作物の無断使用は禁止です。
                 </div>
                 {altar.frameCustomImage&&<button onClick={()=>onUpdateAltar({frameCustomImage:null})} style={{ padding:"4px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.3)",background:"transparent",color:"#ef4444",fontSize:11,cursor:"pointer" }}>✕ 削除</button>}
               </div>
