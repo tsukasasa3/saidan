@@ -331,7 +331,7 @@ export default function App() {
   const deleteCharacter = (id)=>{ setCharacters(prev=>prev.filter(c=>c.id!==id)); setGoods(prev=>prev.map(g=>g.characterId===id?{...g,characterId:null}:g)); };
 
   // ── RandomSets CRUD ────────────────────────────────────────
-  const addRandomSet    = (s)=>{ setRandomSets(prev=>[s,...prev]); showToast("ランダムセットを追加しました ✓"); };
+  const addRandomSet    = (s)=>{ setRandomSets(prev=>[s,...prev]); showToast("交換セットを追加しました ✓"); };
   const updateRandomSet = (id,patch)=>setRandomSets(prev=>prev.map(s=>s.id===id?{...s,...patch}:s));
   const deleteRandomSet = (id)=>{ setRandomSets(prev=>prev.filter(s=>s.id!==id)); showToast("削除しました"); };
   const addDrawLog      = (setId, variants)=>{ // variants: [{variantId, count}]
@@ -344,7 +344,7 @@ export default function App() {
       variants.forEach(v=>{ owned[v.variantId]=(owned[v.variantId]||0)+v.count; });
       return {...s, drawLogs:newLogs, ownedVariants:owned, totalDraws:(s.totalDraws||0)+variants.reduce((a,v)=>a+v.count,0) };
     }));
-    showToast("引いた結果を記録しました 🎰");
+    showToast("交換結果を記録しました ✓");
   };
 
   const goodById = (id)=>goods.find(g=>g.id===id);
@@ -410,7 +410,7 @@ export default function App() {
       <nav style={S.bottomNav}>
         {[
           ["collection","📦","コレクション"],
-          ["random","🎰","ガチャ"],
+          ["random","🔄","交換"],
           ["altar","⛩","祭壇"],
         ].map(([p,icon,label])=>(
           <button key={p} onClick={()=>setPage(p)} style={{ ...S.bottomNavBtn, ...(page===p?S.bottomNavBtnOn:{}) }}>
@@ -592,7 +592,7 @@ function RandomSetsPage({ randomSets, isPro, onAdd, onUpdate, onDelete, onAddDra
         <div style={S.overlay} onClick={()=>setConfirmDelete(null)}>
           <div style={S.confirmBox} onClick={e=>e.stopPropagation()}>
             <div style={{ fontSize:17,fontWeight:800,marginBottom:6 }}>セットを削除しますか？</div>
-            <div style={{ fontSize:12,opacity:0.5,marginBottom:20 }}>引いた履歴もすべて削除されます</div>
+            <div style={{ fontSize:12,opacity:0.5,marginBottom:20 }}>交換履歴もすべて削除されます</div>
             <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
               <button onClick={()=>setConfirmDelete(null)} style={S.btnGhost}>キャンセル</button>
               <button onClick={()=>{onDelete(confirmDelete);setConfirmDelete(null);}} style={S.btnDanger}>削除する</button>
@@ -729,7 +729,7 @@ function RandomSetCard({ set, isPro, isActive, onToggle, onDraw, onDelete, onUpd
                 <div style={{ fontSize:12,fontWeight:700,color:"#60a5fa",marginBottom:8 }}>🔵 余剰管理（交換に出せるもの）</div>
                 <div style={{ display:"flex",flexDirection:"column",gap:5 }}>
                   {variants.filter(v=>(owned[v.id]||0)>=2||(surplusMap[v.id]||0)>0).length===0 && (
-                    <div style={{ fontSize:11,color:"#4b5563",padding:"8px 0" }}>2枚以上引いた弾がここに表示されます</div>
+                    <div style={{ fontSize:11,color:"#4b5563",padding:"8px 0" }}>2枚以上交換した弾がここに表示されます</div>
                   )}
                   {variants.filter(v=>(owned[v.id]||0)>=2||(surplusMap[v.id]||0)>0).map(v=>{
                     const cnt     = owned[v.id]||0;
@@ -836,7 +836,7 @@ function RandomSetCard({ set, isPro, isActive, onToggle, onDraw, onDelete, onUpd
           {/* ── History tab ── */}
           {innerTab==="history" && (
             <div>
-              <div style={{ fontSize:12,fontWeight:700,color:"#c084fc",marginBottom:8 }}>📋 引いた履歴（全件）</div>
+              <div style={{ fontSize:12,fontWeight:700,color:"#c084fc",marginBottom:8 }}>📋 交換履歴（全件）</div>
               {logs.length===0 ? (
                 <div style={{ fontSize:12,color:"#4b5563",textAlign:"center",padding:"16px 0" }}>まだ記録がありません</div>
               ) : (
@@ -941,7 +941,7 @@ function AddRandomSetModal({ onClose, onAdd }) {
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal,maxWidth:480 }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🎰 ランダムセットを追加</div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🔄 交換セットを追加</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
 
@@ -1015,7 +1015,7 @@ function DrawModal({ set, onClose, onRecord }) {
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal,maxWidth:460 }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
-          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🎰 引いた結果を記録</div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#e879f9" }}>🔄 交換結果を記録</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
         <div style={{ fontSize:12,color:"#7c6a9a",marginBottom:14 }}>{set?.name}</div>
@@ -1057,7 +1057,7 @@ function DrawModal({ set, onClose, onRecord }) {
         </div>
 
         <button onClick={submit} disabled={total===0} style={{ width:"100%",padding:"12px",borderRadius:14,border:"none",background:total>0?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.08)",color:total>0?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:total>0?"pointer":"default" }}>
-          {total>0?`${total}枚を記録する`:"引いた枚数を入力してください"}
+          {total>0?`${total}枚を記録する`:"交換した枚数を入力してください"}
         </button>
       </div>
     </div>
