@@ -562,13 +562,13 @@ function RandomSetsPage({ randomSets, isPro, onAdd, onUpdate, onDelete, onAddDra
       </div>
 
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
-        <div style={{ fontSize:13,color:"#7c6a9a" }}>トレカ・缶バッジ・くじなどのランダム系グッズを管理</div>
+        <div style={{ fontSize:13,color:"#7c6a9a" }}>トレカ・缶バッジ・くじなどを管理して <span style={{ color:"#1d9bf0",fontWeight:700 }}>#SAIDAN交換</span> で募集しよう</div>
         <button onClick={()=>setShowAddSet(true)} style={S.addBtn}>＋ セット追加</button>
       </div>
 
       {randomSets.length===0 ? (
         <div style={S.emptyState}>
-          <div style={{ fontSize:52,marginBottom:10 }}>🎰</div>
+          <div style={{ fontSize:52,marginBottom:10 }}>🔄</div>
           <div style={{ fontSize:15,fontWeight:700,marginBottom:6 }}>まだセットがありません</div>
           <div style={{ fontSize:12,opacity:0.5 }}>「＋ セット追加」からトレカやくじを登録しよう</div>
         </div>
@@ -643,6 +643,10 @@ function RandomSetCard({ set, isPro, isActive, onToggle, onDraw, onDelete, onUpd
     ].filter(Boolean).join("\n");
   };
 
+  const tweetShare = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(generateShareText())}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
   const copyShareText = () => {
     navigator.clipboard.writeText(generateShareText())
       .then(()=>alert("コピーしました！Xに貼り付けて投稿しよう 🎉"));
@@ -792,9 +796,14 @@ function RandomSetCard({ set, isPro, isActive, onToggle, onDraw, onDelete, onUpd
 
               {/* Share button */}
               {(surplusTotal>0||wantedCount>0) && (
-                <button onClick={copyShareText} style={{ width:"100%",padding:"10px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#1d9bf0,#818cf8)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:14 }}>
-                  𝕏 交換希望をXにシェア
-                </button>
+                <div style={{ marginBottom:14 }}>
+                  <button onClick={tweetShare} style={{ width:"100%",padding:"10px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#1d9bf0,#0f7abf)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+                    𝕏 Xで交換募集する &nbsp;<span style={{ fontSize:11,opacity:0.85,fontWeight:400 }}>#SAIDAN交換</span>
+                  </button>
+                  <button onClick={copyShareText} style={{ width:"100%",padding:"7px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:11,cursor:"pointer" }}>
+                    📋 テキストをコピー
+                  </button>
+                </div>
               )}
 
               {/* Trade history (PRO) */}
