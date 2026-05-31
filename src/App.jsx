@@ -226,6 +226,7 @@ export default function App() {
   const [viewingShared, setViewingShared] = useState(null); // shared altar object | null
   const [showTerms, setShowTerms]     = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [splashDone, setSplashDone]   = useState(false); // splashを消すタイミング
   const saveTimer = useRef(null);
 
@@ -265,6 +266,9 @@ export default function App() {
 
   // ── Splash fade-out when loaded ───────────────────────────
   useEffect(()=>{ if(loaded) setTimeout(()=>setSplashDone(true), 400); },[loaded]);
+
+  // ── チュートリアル 初回自動表示 ──────────────────────────
+  useEffect(()=>{ if(loaded && !localStorage.getItem("tutorialSeen")) { setShowTutorial(true); } },[loaded]);
 
   // ── Auto-save ─────────────────────────────────────────────
   const triggerSave = useCallback((plan,altars,activeAltarId,goods,characters,purchasedMaterials,randomSets)=>{
@@ -518,6 +522,7 @@ export default function App() {
       {/* ─── Footer ─── */}
       <div style={{ textAlign:"center",padding:"32px 20px 100px",fontSize:11,color:"#374151" }}>
         <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:8 }}>
+          <button onClick={()=>setShowTutorial(true)} style={{ background:"none",border:"none",color:"#818cf8",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>？ 使い方</button>
           <button onClick={()=>setShowTerms(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>利用規約</button>
           <button onClick={()=>setShowPrivacy(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>プライバシーポリシー</button>
           <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#6b7280",fontSize:11,textDecoration:"none" }}>𝕏 @SAIDANdayo</a>
@@ -527,6 +532,7 @@ export default function App() {
 
       {showTerms   && <TermsModal   onClose={()=>setShowTerms(false)}/>}
       {showPrivacy && <PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
+      {showTutorial && <TutorialModal onClose={()=>{ localStorage.setItem("tutorialSeen","1"); setShowTutorial(false); }}/>}
     </div>
   );
 }
@@ -3325,6 +3331,99 @@ function SplashScreen({ fading }) {
             animation:`saidanDot 1.4s ease-in-out ${i*0.22}s infinite`,
           }}/>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tutorial Modal ───────────────────────────────────────────
+function TutorialModal({ onClose }) {
+  const features = [
+    { emoji:"📦", title:"グッズを登録", desc:"写真を撮って棚に並べよう" },
+    { emoji:"🌌", title:"背景をカスタム", desc:"単色・グラデ・画像で設定" },
+    { emoji:"🖼", title:"フレームで囲む", desc:"色も自由に変えられる" },
+    { emoji:"🎀", title:"デコ素材を追加", desc:"指でピンチ・回転ができる" },
+  ];
+  // サンプル棚データ
+  const rows = [
+    [["🖼️","#e879f9"],["🧸","#f59e0b"],["🔵","#818cf8"],["🎪","#10b981"]],
+    [["🖼️","#e879f9"],["🔵","#818cf8"],["🧸","#f59e0b"]],
+    [["🎪","#10b981"],["🖼️","#e879f9"]],
+  ];
+  const decos = [
+    { e:"💖", top:18, left:8,  rot:-18 },
+    { e:"⭐", top:14, right:10, rot:15  },
+    { e:"🌸", bottom:30, left:14, rot:8 },
+    { e:"✨", bottom:22, right:12, rot:-12 },
+    { e:"🩷", top:60, left:6,  rot:20  },
+  ];
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+
+        {/* ヘッダー */}
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:20,fontWeight:900,color:"#f0e8ff",letterSpacing:1 }}>⛩ SAIDANへようこそ！</div>
+            <div style={{ fontSize:11,color:"#9ca3af",marginTop:4 }}>推しグッズを並べて、自分だけの祭壇を作ろう</div>
+          </div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer",flexShrink:0 }}>✕</button>
+        </div>
+
+        {/* ─── イメージ図：サンプル祭壇 ─── */}
+        <div style={{ position:"relative",borderRadius:16,overflow:"hidden",background:"linear-gradient(160deg,#1a0a2e,#0d1a4a)",border:"2px solid rgba(232,121,249,0.45)",boxShadow:"0 0 24px rgba(232,121,249,0.18), inset 0 0 20px rgba(232,121,249,0.04)",marginBottom:16,userSelect:"none" }}>
+          {/* トップカラーライン */}
+          <div style={{ height:4,background:"linear-gradient(90deg,#e879f9,#818cf8,#e879f9)",backgroundSize:"200%",animation:"shimmer 3s linear infinite" }}/>
+          {/* アルター名バー */}
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"8px 16px",borderBottom:"1px solid rgba(232,121,249,0.2)",background:"rgba(232,121,249,0.07)",fontSize:12,fontWeight:800,color:"#e879f9",letterSpacing:3 }}>
+            ⛩ &nbsp;推しの祭壇&nbsp; ⛩
+          </div>
+          {/* 棚 */}
+          <div style={{ padding:"10px 14px 16px",display:"flex",flexDirection:"column",gap:0 }}>
+            {rows.map((row,ri)=>(
+              <div key={ri}>
+                <div style={{ display:"flex",gap:6,justifyContent:"center",paddingBottom:6 }}>
+                  {row.map(([emoji,color],ci)=>(
+                    <div key={ci} style={{ width:52,height:64,borderRadius:7,background:`${color}18`,border:`1px solid ${color}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0,boxShadow:`0 2px 8px ${color}22` }}>
+                      {emoji}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ height:7,background:"linear-gradient(180deg,#3d2060,#2a1540)",borderRadius:4,marginBottom:8,boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}/>
+              </div>
+            ))}
+          </div>
+          {/* フローティングデコ */}
+          {decos.map((d,i)=>(
+            <div key={i} style={{ position:"absolute",fontSize:18,top:d.top,bottom:d.bottom,left:d.left,right:d.right,transform:`rotate(${d.rot}deg)`,filter:"drop-shadow(0 0 5px rgba(232,121,249,0.7))",pointerEvents:"none" }}>{d.e}</div>
+          ))}
+          {/* フレーム枠（グロー） */}
+          <div style={{ position:"absolute",inset:0,borderRadius:14,border:"2px solid rgba(232,121,249,0.35)",boxShadow:"inset 0 0 16px rgba(232,121,249,0.08)",pointerEvents:"none" }}/>
+          {/* ラベルチップ */}
+          <div style={{ position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:6,pointerEvents:"none" }}>
+            {[["🎨","背景"],["🖼","フレーム"],["🎀","デコ"]].map(([e,l])=>(
+              <div key={l} style={{ background:"rgba(0,0,0,0.55)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:20,padding:"3px 8px",fontSize:10,color:"#e0d8f8",fontWeight:700,backdropFilter:"blur(4px)",display:"flex",gap:3,alignItems:"center" }}>{e} {l}</div>
+            ))}
+          </div>
+          <style>{`@keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}`}</style>
+        </div>
+
+        {/* 機能グリッド */}
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16 }}>
+          {features.map(f=>(
+            <div key={f.title} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"12px 10px" }}>
+              <div style={{ fontSize:22,marginBottom:4 }}>{f.emoji}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:"#f0e8ff" }}>{f.title}</div>
+              <div style={{ fontSize:10,color:"#7c6a9a",marginTop:2,lineHeight:1.4 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <button onClick={onClose} style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#e879f9,#818cf8)",color:"#fff",fontSize:15,fontWeight:900,cursor:"pointer",letterSpacing:1,boxShadow:"0 4px 20px rgba(232,121,249,0.3)" }}>
+          さっそくはじめる →
+        </button>
+        <div style={{ textAlign:"center",marginTop:8,fontSize:10,color:"#4b5563" }}>フッターの「？ 使い方」からいつでも見られます</div>
       </div>
     </div>
   );
