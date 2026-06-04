@@ -1,0 +1,46 @@
+{
+  "hash": "28cc3447",
+  "configHash": "4004f3f5",
+  "lockfileHash": "9c98246e",
+  "browserHash": "8a455868",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "25865829",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "6e6bc85d",
+      "needsInterop": true
+    },
+    "@imgly/background-removal": {
+      "src": "../../node_modules/@imgly/background-removal/dist/index.mjs",
+      "file": "@imgly_background-removal.js",
+      "fileHash": "4fbf19d3",
+      "needsInterop": false
+    },
+    "exifr": {
+      "src": "../../node_modules/exifr/dist/full.esm.mjs",
+      "file": "exifr.js",
+      "fileHash": "1440d1cc",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-4WPONVGN": {
+      "file": "chunk-4WPONVGN.js"
+    },
+    "ort.webgpu.bundle.min-YABSGIUP": {
+      "file": "ort__webgpu__bundle__min-YABSGIUP.js"
+    },
+    "ort.bundle.min-QQH57BIC": {
+      "file": "ort__bundle__min-QQH57BIC.js"
+    },
+    "chunk-KVCYZR2Q": {
+      "file": "chunk-KVCYZR2Q.js"
+    }
+  }
+}

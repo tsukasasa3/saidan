@@ -29,8 +29,12 @@
 <div class="asset">
   <div class="label">📷 プロフィールアイコン <span class="badge">400 × 400 px</span></div>
   <canvas id="icon" width="400" height="400"></canvas>
-  <div class="btns"><button onclick="dl('icon','saidan-icon.png')">⬇️ icon ダウンロード</button></div>
-  <div class="hint">※ Twitterは円形にトリミングされます。</div>
+  <div class="btns">
+    <button onclick="dl('icon','saidan-icon.png')">⬇️ Twitter用 ダウンロード</button>
+    <button onclick="dlPwa(192)">⬇️ PWA 192px</button>
+    <button onclick="dlPwa(512)">⬇️ PWA 512px</button>
+  </div>
+  <div class="hint">※ Twitterは円形にトリミングされます。<br>※ PWAボタンでホーム画面アイコン用PNGをダウンロードできます。保存後 <code style="color:#e879f9">public/icon-192.png</code> / <code style="color:#e879f9">public/icon-512.png</code> としてプロジェクトに配置してください。</div>
 </div>
 
 <div class="asset">
@@ -377,6 +381,55 @@ function dl(id,filename){
   a.download=filename;
   a.href=document.getElementById(id).toDataURL('image/png');
   a.click();
+}
+
+// PWA用アイコンを指定サイズで再描画してダウンロード
+function dlPwa(size){
+  // 512px はネイティブ再描画、192px は512からスケールダウン
+  const tmp512 = document.createElement('canvas');
+  tmp512.width=512; tmp512.height=512;
+  const tctx = tmp512.getContext('2d');
+  const W=512, H=512;
+
+  const off = document.createElement('canvas');
+  off.width=W; off.height=H;
+  const octx = off.getContext('2d');
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+    <text x="${W/2}" y="${H*0.67}" font-size="${W*0.595}"
+      text-anchor="middle"
+      font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,serif">⛩️</text>
+  </svg>`;
+  const img = new Image();
+  img.onload = () => {
+    octx.drawImage(img, 0, 0);
+    octx.globalCompositeOperation = 'source-in';
+    const g = octx.createLinearGradient(0, 80/400*H, W, H);
+    g.addColorStop(0,   '#f0abfc');
+    g.addColorStop(0.4, '#e879f9');
+    g.addColorStop(1,   '#818cf8');
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, W, H);
+
+    tctx.fillStyle = '#0c0a14';
+    tctx.fillRect(0, 0, W, H);
+    const gl = tctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.475);
+    gl.addColorStop(0,'rgba(232,121,249,0.18)');
+    gl.addColorStop(1,'rgba(0,0,0,0)');
+    tctx.fillStyle=gl; tctx.fillRect(0,0,W,H);
+    tctx.drawImage(off, 0, 0);
+
+    // 最終出力サイズへスケール
+    const out = document.createElement('canvas');
+    out.width=size; out.height=size;
+    out.getContext('2d').drawImage(tmp512, 0,0,size,size);
+
+    const a=document.createElement('a');
+    a.download=`icon-${size}.png`;
+    a.href=out.toDataURL('image/png');
+    a.click();
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 </script>
 </body>
