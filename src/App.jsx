@@ -120,7 +120,7 @@ async function registerCreator(userId, displayName, bio) {
   return await sbFetch("/rest/v1/creator_profiles", {
     method:"POST",
     headers:{"Prefer":"return=representation"},
-    body:JSON.stringify({ id:userId, display_name:displayName, bio })
+    body:JSON.stringify({ id:userId, display_name:displayName, bio, is_approved:true })
   });
 }
 
@@ -3771,7 +3771,7 @@ function AdminPanel({ onClose, showToast, onApproved }) {
 
         {/* タブ */}
         <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-          {[["creators",`クリエイター申請 (${pendingCreators.length})`],["materials",`素材申請 (${pendingMaterials.length})`]].map(([v,l])=>(
+          {[["materials",`素材申請 (${pendingMaterials.length})`]].map(([v,l])=>(
             <button key={v} onClick={()=>setTab(v)} style={{ flex:1, padding:"8px", borderRadius:10, border:`1px solid ${tab===v?"rgba(251,191,36,0.5)":"rgba(255,255,255,0.1)"}`, background:tab===v?"rgba(251,191,36,0.12)":"transparent", color:tab===v?"#fbbf24":"#9ca3af", fontSize:12, fontWeight:tab===v?700:400, cursor:"pointer" }}>{l}</button>
           ))}
         </div>
@@ -3998,19 +3998,6 @@ function CreatorHubModal({ session, creatorProfile, onRegister, onMaterialSubmit
     );
   }
 
-  // 審査待ち
-  if (!creatorProfile.is_approved) return (
-    <div style={{ ...S.overlay, zIndex:3000 }} onClick={onClose}>
-      <div style={{ ...S.modal, maxWidth:440 }} onClick={e=>e.stopPropagation()}>
-        <div style={{ textAlign:"center", padding:"32px 20px" }}>
-          <div style={{ fontSize:48, marginBottom:12 }}>⏳</div>
-          <div style={{ fontSize:16, fontWeight:800, color:"#fbbf24", marginBottom:8 }}>審査中です</div>
-          <div style={{ fontSize:13, color:"#9ca3af", lineHeight:1.7 }}>運営の確認後、素材のアップロードが可能になります。<br/>通常1〜3営業日かかります。</div>
-          <button onClick={onClose} style={{ marginTop:20, padding:"10px 24px", borderRadius:12, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"#9ca3af", cursor:"pointer" }}>閉じる</button>
-        </div>
-      </div>
-    </div>
-  );
 
   // ダッシュボード（承認済みクリエイター）
   const STATUS_LABEL = { pending:"審査中", approved:"公開中", rejected:"非承認" };
