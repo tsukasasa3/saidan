@@ -349,8 +349,9 @@ export default function App() {
   const [loaded, setLoaded]       = useState(false);
   const [toast, setToast]         = useState(null);
   const [viewingShared, setViewingShared] = useState(null); // shared altar object | null
-  const [showTerms, setShowTerms]     = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms]       = useState(false);
+  const [showPrivacy, setShowPrivacy]   = useState(false);
+  const [showTokusho, setShowTokusho]   = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [splashDone, setSplashDone]   = useState(false); // splashを消すタイミング
   // ── Creator Marketplace state ──────────────────────────────
@@ -741,6 +742,7 @@ export default function App() {
           <button onClick={()=>setShowTutorial(true)} style={{ background:"none",border:"none",color:"#818cf8",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>？ 使い方</button>
           <button onClick={()=>setShowTerms(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>利用規約</button>
           <button onClick={()=>setShowPrivacy(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>プライバシーポリシー</button>
+          <button onClick={()=>setShowTokusho(true)} style={{ background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>特定商取引法</button>
           <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#6b7280",fontSize:11,textDecoration:"none" }}>𝕏 @SAIDANdayo</a>
         </div>
         <div style={{ color:"#4b5563",fontSize:10 }}>© 2026 SAIDAN</div>
@@ -748,6 +750,7 @@ export default function App() {
 
       {showTerms   && <TermsModal   onClose={()=>setShowTerms(false)}/>}
       {showPrivacy && <PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
+      {showTokusho && <TokushoModal onClose={()=>setShowTokusho(false)}/>}
       {showTutorial && <TutorialModal onClose={()=>{ localStorage.setItem("tutorialSeen","1"); setShowTutorial(false); }}/>}
     </div>
   );
@@ -4320,6 +4323,61 @@ function PrivacyModal({ onClose }) {
         <H>お問い合わせ</H>
         <P>X（旧Twitter）: <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a></P>
         <P>Email: <a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a></P>
+      </div>
+    </div>
+  );
+}
+
+// ─── 特定商取引法に基づく表記 Modal ──────────────────────────
+function TokushoModal({ onClose }) {
+  const H = ({children})=><div style={{ fontSize:13,fontWeight:800,color:"#c084fc",marginTop:20,marginBottom:6 }}>{children}</div>;
+  const Row = ({label,value})=>(
+    <div style={{ display:"flex",gap:8,marginBottom:8,fontSize:12,lineHeight:1.7 }}>
+      <div style={{ color:"#7c6a9a",fontWeight:700,flexShrink:0,width:140 }}>{label}</div>
+      <div style={{ color:"#d1d5db",flex:1 }}>{value}</div>
+    </div>
+  );
+  return (
+    <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>📋 特定商取引法に基づく表記</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:20 }}>最終更新日：2026年6月6日</div>
+
+        <div style={{ background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:10,padding:"10px 14px",fontSize:11,color:"#fbbf24",marginBottom:20,lineHeight:1.7 }}>
+          ⚠️ 販売業者名・住所・電話番号は、法令に基づき請求があり次第遅滞なく開示いたします。開示をご希望の場合は下記メールアドレスまでお問い合わせください。
+        </div>
+
+        <Row label="販売業者" value="SAIDAN運営（屋号）※本名は請求時開示" />
+        <Row label="運営責任者" value="SAIDAN運営" />
+        <Row label="所在地" value="請求があり次第、遅滞なく開示いたします" />
+        <Row label="電話番号" value="請求があり次第、遅滞なく開示いたします" />
+        <Row label="メールアドレス" value="support.saidan@gmail.com" />
+        <Row label="サービスURL" value="https://saidan-black.vercel.app" />
+
+        <H>販売価格</H>
+        <Row label="価格" value="各素材ページに表示（¥0〜¥370・消費税込）" />
+        <Row label="追加料金" value="なし" />
+
+        <H>お支払いについて</H>
+        <Row label="支払方法" value="クレジットカード（Stripe）" />
+        <Row label="支払時期" value="購入手続き完了時にご請求" />
+
+        <H>商品の提供について</H>
+        <Row label="提供時期" value="購入完了直後（デジタルコンテンツのため即時提供）" />
+        <Row label="動作環境" value="モダンブラウザ最新版（Chrome・Safari・Firefox・Edge）" />
+
+        <H>返品・返金について</H>
+        <div style={{ fontSize:12,color:"#d1d5db",lineHeight:1.8,marginBottom:4 }}>
+          デジタルコンテンツの性質上、購入完了後の返品・返金は原則お受けできません。<br/>
+          ただし、商品に重大な不具合がある場合は、下記メールアドレスまでご連絡ください。
+        </div>
+
+        <H>お問い合わせ</H>
+        <Row label="X（旧Twitter）" value={<a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a>} />
+        <Row label="メール" value={<a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a>} />
       </div>
     </div>
   );
