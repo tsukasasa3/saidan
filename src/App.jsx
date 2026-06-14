@@ -117,9 +117,9 @@ async function getCreatorProfile(userId) {
 }
 
 async function registerCreator(userId, displayName, bio) {
-  return await sbFetch("/rest/v1/creator_profiles", {
+  return await sbFetch("/rest/v1/creator_profiles?on_conflict=id", {
     method:"POST",
-    headers:{"Prefer":"return=representation"},
+    headers:{"Prefer":"resolution=merge-duplicates,return=representation"},
     body:JSON.stringify({ id:userId, display_name:displayName, bio, is_approved:true })
   });
 }
@@ -427,8 +427,8 @@ export default function App() {
       // 購入済みリストに楽観的に追加
       setMyPurchaseIds(prev => prev.includes(purchasedId) ? prev : [...prev, purchasedId]);
       showToast("🎉 購入完了！素材を追加しました");
-      // DB反映を待って再取得
-      setTimeout(()=>{ if (session?.user?.id) getMyPurchases(session.user.id).then(setMyPurchaseIds); }, 3000);
+      // DB反映を待って再取得（既存のIDと合流させる）
+      setTimeout(()=>{ if (session?.user?.id) getMyPurchases(session.user.id).then(ids => setMyPurchaseIds(prev => [...new Set([...prev, ...ids])])); }, 3000);
     }
     const goMarket = params.get("page");
     if (goMarket === "market") { window.history.replaceState({}, "", "/"); setPage("market"); }
@@ -595,6 +595,7 @@ export default function App() {
             materials={marketMaterials}
             purchaseIds={myPurchaseIds}
             session={session}
+            creatorProfile={creatorProfile}
             onFreePurchase={async(materialId)=>{
               if (!session) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
               try {
@@ -1694,7 +1695,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       {!viewingShared && (
         <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
           {altars.map(a=>(
-            <button key={a.id} onClick={()=>{ if(a.id!==altar.id) { setEditingName(false); onUpdateAltar&&true; /* parent handles */ } onSwitchAltar&&require===undefined&&(()=>{})()||true; }}
+            <button key={a.id}
               style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${a.id===altar.id?"rgba(232,121,249,0.5)":"rgba(255,255,255,0.1)"}`, background:a.id===altar.id?"rgba(232,121,249,0.15)":"transparent", color:a.id===altar.id?"#e879f9":"#9ca3af", fontSize:12, fontWeight:600, cursor:"pointer" }}
               onClick={()=>onSwitchAltar(a.id)}
             >{a.name}</button>
@@ -2092,25 +2093,38 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
     setIsDarkMode(baseTemplate.dark!==false);
   };
 
-  // ── 画像アップロード（アニメタブ内）──
+  // ── 画像アップロード（デザインタブ内）──
   const bgImgRef = useRef(null);
+  const BG_HISTORY_KEY = "saidan-bg-history";
+  const BG_HISTORY_MAX = 8;
+  const [bgHistory, setBgHistory] = useState(()=>{
+    try { return JSON.parse(localStorage.getItem(BG_HISTORY_KEY)||"[]"); } catch { return []; }
+  });
   const handleBgImgFile = async (e) => {
     const f = e.target.files[0]; if (!f) return;
     if (f.size > 5*1024*1024) { alert("5MB以下にしてください"); return; }
-    onUpdateAltar({ bgCustomImage: await readFileAsDataURL(f) });
+    const dataUrl = await readFileAsDataURL(f);
+    onUpdateAltar({ bgCustomImage: dataUrl });
+    // 履歴に保存（重複除去・最大件数管理）
+    setBgHistory(prev => {
+      const next = [dataUrl, ...prev.filter(u=>u!==dataUrl)].slice(0, BG_HISTORY_MAX);
+      try { localStorage.setItem(BG_HISTORY_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    e.target.value = "";
   };
 
-  // ── アニメ背景タブ ──
+  // ── デザイン背景タブ ──
   const bgItems = MATERIALS.filter(m=>m.type==="bg");
   const isBgMatActive = (mat) => altar.bgMaterialId===mat.id;
   const toggleBgMat = (mat) => {
     onUpdateAltar({ bgMaterialId: altar.bgMaterialId===mat.id?null:mat.id, bgCustomColor: null });
   };
 
-  const TABS = [["solid","🎨 単色"],["custom","✏ カスタム"],["anim","🌈 アニメ"]];
+  const TABS = [["solid","🎨 単色"],["custom","✏ カスタム"],["design","🖼 デザイン"]];
   const hasActiveSolid  = !!altar.bgCustomColor;
   const hasActiveCustom = !!altar.customColors;
-  const hasActiveAnim   = !!altar.bgMaterialId;
+  const hasActiveAnim   = !!altar.bgMaterialId || !!altar.bgCustomImage;
 
   return (
     <div style={S.overlay} onClick={onClose}>
@@ -2123,7 +2137,7 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
         {/* Tabs */}
         <div style={{ display:"flex",gap:6,marginBottom:14 }}>
           {TABS.map(([t,l])=>{
-            const hasActive = t==="solid"?hasActiveSolid:t==="custom"?hasActiveCustom:hasActiveAnim;
+            const hasActive = t==="solid"?hasActiveSolid:t==="custom"?hasActiveCustom:t==="design"?hasActiveAnim:false;
             return (
               <button key={t} onClick={()=>setBgTab(t)}
                 style={{ flex:1,padding:"7px 4px",borderRadius:10,border:`1px solid ${bgTab===t?"rgba(129,140,248,0.5)":hasActive?"rgba(129,140,248,0.25)":"rgba(255,255,255,0.08)"}`,background:bgTab===t?"rgba(129,140,248,0.18)":"transparent",color:bgTab===t?"#818cf8":hasActive?"#a5b4fc":"#9ca3af",fontSize:11,fontWeight:700,cursor:"pointer",position:"relative" }}>
@@ -2191,8 +2205,8 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
           </div>
         </>)}
 
-        {/* ── アニメ背景タブ ── */}
-        {bgTab==="anim"&&(
+        {/* ── デザイン背景タブ ── */}
+        {bgTab==="design"&&(
           <div>
             {/* 画像アップロード */}
             <div style={{ background:"rgba(255,255,255,0.03)",border:`2px solid ${altar.bgCustomImage?"rgba(129,140,248,0.5)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
@@ -2217,6 +2231,30 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
                 </div>
               </div>
             </div>
+            {/* アップロード履歴 */}
+            {bgHistory.length>0&&(
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6 }}>🕐 アップロード履歴</div>
+                <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                  {bgHistory.map((url,i)=>{
+                    const isActive = altar.bgCustomImage===url;
+                    return (
+                      <div key={i} onClick={()=>onUpdateAltar({bgCustomImage:url})}
+                        style={{ width:52,height:52,borderRadius:8,overflow:"hidden",cursor:"pointer",flexShrink:0,
+                          border:`2px solid ${isActive?"#818cf8":"rgba(255,255,255,0.1)"}`,
+                          boxShadow:isActive?"0 0 0 1px #818cf8":"none",position:"relative",transition:"all 0.15s" }}>
+                        <img src={url} alt={`履歴${i+1}`} style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                        {isActive&&<div style={{ position:"absolute",inset:0,background:"rgba(129,140,248,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>✓</div>}
+                      </div>
+                    );
+                  })}
+                  <div onClick={()=>{ setBgHistory([]); try{localStorage.removeItem(BG_HISTORY_KEY);}catch{} }}
+                    style={{ width:52,height:52,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:"1px dashed rgba(255,255,255,0.1)",flexShrink:0,fontSize:9,color:"#6b7280",textAlign:"center",lineHeight:1.4 }}>
+                    🗑<br/>履歴消去
+                  </div>
+                </div>
+              </div>
+            )}
             {/* プリセット背景グリッド */}
             <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8 }}>
             {bgItems.map(mat=>{
@@ -2252,29 +2290,48 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMateria
   const customDecoRef  = useRef(null);
   const customFrameRef = useRef(null);
 
+  const DECO_HISTORY_KEY = "saidan-deco-history";
+  const DECO_HISTORY_MAX = 8;
+  const [decoHistory, setDecoHistory] = useState(()=>{
+    try { return JSON.parse(localStorage.getItem(DECO_HISTORY_KEY)||"[]"); } catch { return []; }
+  });
+  const saveDecoHistory = (dataUrl) => {
+    setDecoHistory(prev => {
+      const next = [dataUrl, ...prev.filter(u=>u!==dataUrl)].slice(0, DECO_HISTORY_MAX);
+      try { localStorage.setItem(DECO_HISTORY_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   const handleCustomFrameFile = async (e) => {
     const f = e.target.files[0]; if (!f) return;
     if (f.size > 5*1024*1024) { alert("5MB以下にしてください"); return; }
     onUpdateAltar({ frameCustomImage: await readFileAsDataURL(f) });
+    e.target.value = "";
   };
 
   const handleCustomDecoFile = async (e) => {
     const f = e.target.files[0]; if (!f) return;
     if (f.size > 3*1024*1024) { alert("3MB以下にしてください"); return; }
-    setCustomDecoImg(await readFileAsDataURL(f));
+    const dataUrl = await readFileAsDataURL(f);
+    setCustomDecoImg(dataUrl);
+    saveDecoHistory(dataUrl);
+    e.target.value = "";
   };
 
-  const addCustomDeco = () => {
-    if (!customDecoImg) { alert("画像を選択してください"); return; }
+  const addCustomDeco = (imgUrl, name) => {
+    const url  = imgUrl  || customDecoImg;
+    const label = name || customDecoName.trim() || "マイデコ";
+    if (!url) { alert("画像を選択してください"); return; }
     const cur = altar.decoItems||[];
     onUpdateAltar({ decoItems:[...cur,{
       id:newUid(), materialId:"custom",
-      customImage:customDecoImg,
-      customName:customDecoName.trim()||"マイデコ",
+      customImage:url,
+      customName:label,
       x:150+Math.random()*200, y:100+Math.random()*150,
       scale:1.5, zIndex:(cur.length+1)*10,
     }]});
-    setCustomDecoImg(null); setCustomDecoName("");
+    if (!imgUrl) { setCustomDecoImg(null); setCustomDecoName(""); }
     alert("追加しました！祭壇上で位置を調整してください ✓");
   };
   const TABS = [["frame","🖼 フレーム"],["deco","🎀 デコ"],["light","💡 ライト"]];
@@ -2509,12 +2566,35 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMateria
                   💡 <strong style={{ color:"#c7d2fe" }}>素材をお探しですか？</strong><br/>
                   <a href="https://sozaino.site/" target="_blank" rel="noreferrer" style={{ color:"#818cf8",fontWeight:700 }}>OKUMONO（sozaino.site）</a> はVTuber向けフリー素材サイトです。商用利用可・登録不要。
                 </div>
-                <button onClick={addCustomDeco} disabled={!customDecoImg}
+                <button onClick={()=>addCustomDeco()} disabled={!customDecoImg}
                   style={{ padding:"6px",borderRadius:8,border:"none",background:customDecoImg?"linear-gradient(135deg,#e879f9,#818cf8)":"rgba(255,255,255,0.06)",color:customDecoImg?"#fff":"#4b5563",fontSize:11,fontWeight:700,cursor:customDecoImg?"pointer":"default" }}>
                   ＋ 祭壇に追加
                 </button>
               </div>
             </div>
+            {/* デコ履歴 */}
+            {decoHistory.length>0&&(
+              <div style={{ marginTop:10 }}>
+                <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6 }}>🕐 アップロード履歴（タップで即追加）</div>
+                <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                  {decoHistory.map((url,i)=>(
+                    <div key={i} onClick={()=>addCustomDeco(url,"マイデコ")}
+                      style={{ width:52,height:52,borderRadius:8,overflow:"hidden",cursor:"pointer",flexShrink:0,
+                        border:"2px solid rgba(232,121,249,0.25)",position:"relative",
+                        background:"rgba(255,255,255,0.03)",transition:"border-color 0.15s" }}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(232,121,249,0.7)"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(232,121,249,0.25)"}>
+                      <img src={url} alt={`履歴${i+1}`} style={{ width:"100%",height:"100%",objectFit:"contain" }}/>
+                      <div style={{ position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.45)",fontSize:9,color:"#e879f9",textAlign:"center",lineHeight:"14px",fontWeight:700 }}>＋</div>
+                    </div>
+                  ))}
+                  <div onClick={()=>{ setDecoHistory([]); try{localStorage.removeItem(DECO_HISTORY_KEY);}catch{}; }}
+                    style={{ width:52,height:52,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:"1px dashed rgba(255,255,255,0.1)",flexShrink:0,fontSize:9,color:"#6b7280",textAlign:"center",lineHeight:1.4 }}>
+                    🗑<br/>履歴消去
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -3937,7 +4017,7 @@ function AdminPanel({ onClose, showToast, onApproved }) {
 }
 
 // ─── MarketPage ───────────────────────────────────────────────
-function MarketPage({ materials, purchaseIds, session, onFreePurchase, onPaidPurchase, onOpenCreatorHub }) {
+function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePurchase, onPaidPurchase, onOpenCreatorHub }) {
   const [filter, setFilter] = useState("all");
   const filtered = filter==="all" ? materials : materials.filter(m=>m.type===filter);
   const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
@@ -3946,11 +4026,8 @@ function MarketPage({ materials, purchaseIds, session, onFreePurchase, onPaidPur
   return (
     <div style={{ padding:"16px 16px 120px", maxWidth:480, margin:"0 auto" }}>
       {/* ヘッダー */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+      <div style={{ marginBottom:6 }}>
         <div style={{ fontSize:18, fontWeight:800, color:"#e879f9" }}>🛍 マーケット</div>
-        <button onClick={onOpenCreatorHub} style={{ padding:"6px 14px", borderRadius:20, border:"1px solid rgba(232,121,249,0.4)", background:"rgba(232,121,249,0.1)", color:"#e879f9", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-          🎨 クリエイターになる
-        </button>
       </div>
       <div style={{ fontSize:12, color:"#7c6a9a", marginBottom:16 }}>
         クリエイターが作ったデコ素材をゲットしよう
@@ -4006,6 +4083,31 @@ function MarketPage({ materials, purchaseIds, session, onFreePurchase, onPaidPur
           })}
         </div>
       )}
+
+      {/* クリエイター導線 */}
+      <div style={{ marginTop:32, borderRadius:16, border:"1px solid rgba(232,121,249,0.2)", background:"rgba(232,121,249,0.05)", padding:"16px 18px" }}>
+        {creatorProfile ? (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#e879f9", marginBottom:2 }}>✦ {creatorProfile.display_name}さん</div>
+              <div style={{ fontSize:11, color:"#7c6a9a" }}>クリエイターハブで素材を管理できます</div>
+            </div>
+            <button onClick={onOpenCreatorHub} style={{ padding:"6px 14px", borderRadius:20, border:"1px solid rgba(232,121,249,0.4)", background:"rgba(232,121,249,0.1)", color:"#e879f9", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+              ハブを開く
+            </button>
+          </div>
+        ) : (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#e879f9", marginBottom:2 }}>🎨 クリエイターになる</div>
+              <div style={{ fontSize:11, color:"#7c6a9a" }}>自作のデコ素材を販売できます</div>
+            </div>
+            <button onClick={onOpenCreatorHub} style={{ padding:"6px 14px", borderRadius:20, border:"1px solid rgba(232,121,249,0.4)", background:"rgba(232,121,249,0.1)", color:"#e879f9", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+              登録する
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -4242,6 +4344,7 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
         {/* サムネイル */}
         <div style={S.fieldGroup}>
           <label style={S.label}>サムネイル * (PNG/JPG)</label>
+          <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, lineHeight:1.6 }}>マーケットの一覧に表示される「見本画像」です。素材を使った祭壇のイメージや、素材全体をまとめたデザイン画像を設定してください。<br/>推奨サイズ：<strong style={{ color:"#9ca3af" }}>500×500px（正方形）</strong></div>
           <div onClick={()=>thumbRef.current?.click()} style={{ height:90, borderRadius:12, border:"2px dashed rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", overflow:"hidden", background:"rgba(255,255,255,0.03)" }}>
             {thumbPreview
               ? <img src={thumbPreview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
@@ -4254,6 +4357,7 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
         {/* 素材ファイル */}
         <div style={S.fieldGroup}>
           <label style={S.label}>素材ファイル * (PNG推奨・透過対応){type==="deco_pack"&&<span style={{ color:"#9ca3af", fontWeight:400 }}> 最大8個</span>}</label>
+          <div style={{ fontSize:10, color:"#6b7280", marginBottom:6, lineHeight:1.6 }}>{type==="deco_pack" ? <>祭壇に貼り付けて使うデコ画像です。透過PNGを複数枚まとめてアップロードできます。<br/>推奨サイズ：<strong style={{ color:"#9ca3af" }}>500×500px（正方形・透過PNG）</strong></> : <>祭壇全体に重ねて表示されるフレーム画像です。祭壇はほぼ正方形なので、正方形の透過PNGを推奨します。<br/>推奨サイズ：<strong style={{ color:"#9ca3af" }}>1000×1000px（透過PNG）</strong></>}</div>
           <div onClick={()=>filesRef.current?.click()} style={{ minHeight:80, borderRadius:12, border:"2px dashed rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", background:"rgba(255,255,255,0.03)", padding:8, flexWrap:"wrap", gap:8 }}>
             {matFiles.length>0
               ? matFiles.map((f,i)=>(
