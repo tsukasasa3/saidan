@@ -109,19 +109,41 @@ async function uploadFile(bucket, path, file) {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 }
 
+const CREATOR_CACHE_KEY = "saidan-creator-profile";
+function getCachedCreatorProfile(userId) {
+  try {
+    const c = JSON.parse(localStorage.getItem(CREATOR_CACHE_KEY)||"null");
+    return (c && c.id === userId) ? c : null;
+  } catch { return null; }
+}
+function setCachedCreatorProfile(profile) {
+  try {
+    if (profile) localStorage.setItem(CREATOR_CACHE_KEY, JSON.stringify(profile));
+    else localStorage.removeItem(CREATOR_CACHE_KEY);
+  } catch {}
+}
+
 async function getCreatorProfile(userId) {
   try {
     const rows = await sbFetch(`/rest/v1/creator_profiles?id=eq.${userId}&select=*`);
-    return rows?.[0] || null;
-  } catch { return null; }
+    const profile = rows?.[0] || null;
+    setCachedCreatorProfile(profile);
+    return profile;
+  } catch {
+    // Supabase失敗時はキャッシュから復元
+    return getCachedCreatorProfile(userId);
+  }
 }
 
 async function registerCreator(userId, displayName, bio) {
-  return await sbFetch("/rest/v1/creator_profiles?on_conflict=id", {
+  const rows = await sbFetch("/rest/v1/creator_profiles?on_conflict=id", {
     method:"POST",
     headers:{"Prefer":"resolution=merge-duplicates,return=representation"},
     body:JSON.stringify({ id:userId, display_name:displayName, bio, is_approved:true })
   });
+  const profile = rows?.[0] || null;
+  setCachedCreatorProfile(profile);
+  return rows;
 }
 
 async function submitMaterial(data) {
@@ -355,7 +377,10 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [splashDone, setSplashDone]   = useState(false); // splashを消すタイミング
   // ── Creator Marketplace state ──────────────────────────────
-  const [creatorProfile, setCreatorProfile] = useState(null);
+  const [creatorProfile, setCreatorProfile] = useState(()=>{
+    const sess = getSession();
+    return sess?.user?.id ? getCachedCreatorProfile(sess.user.id) : null;
+  });
   const [showCreatorHub, setShowCreatorHub] = useState(false);
   const [marketMaterials, setMarketMaterials] = useState([]);
   const [myPurchaseIds, setMyPurchaseIds]   = useState([]);
