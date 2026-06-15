@@ -61,6 +61,24 @@ async function signIn(email, password) {
   return data;
 }
 
+async function requestPasswordReset(email) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON},
+    body:JSON.stringify({ email })
+  });
+  if (!res.ok) { const e=await res.json(); throw new Error(e.msg||e.message||"エラーが発生しました"); }
+}
+
+async function updatePassword(accessToken, newPassword) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method:"PUT",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON,"Authorization":`Bearer ${accessToken}`},
+    body:JSON.stringify({ password:newPassword })
+  });
+  if (!res.ok) { const e=await res.json(); throw new Error(e.msg||e.message||"エラーが発生しました"); }
+}
+
 async function signOut() {
   const session = JSON.parse(localStorage.getItem("saidan_session")||"null");
   if (session?.access_token) {
@@ -386,6 +404,7 @@ export default function App() {
   const [myPurchaseIds, setMyPurchaseIds]   = useState([]);
   const [isAdmin, setIsAdmin]               = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [recoveryToken, setRecoveryToken]   = useState(null); // パスワードリセット用トークン
   const saveTimer = useRef(null);
 
   const activeAltar = altars.find(a=>a.id===activeAltarId) || altars[0];
@@ -440,6 +459,19 @@ export default function App() {
       setIsAdmin(false);
     }
   },[loaded, session?.user?.id]);
+
+  // ── パスワードリセット用URLハッシュ検出 ──────────────────
+  useEffect(()=>{
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      const params = new URLSearchParams(hash.replace(/^#/, ""));
+      const token = params.get("access_token");
+      if (token) {
+        setRecoveryToken(token);
+        window.history.replaceState({}, "", "/");
+      }
+    }
+  },[]);
 
   // ── 決済成功後のリダイレクト処理 ──────────────────────────
   useEffect(()=>{
@@ -736,6 +768,11 @@ export default function App() {
           showToast("ログアウトしました");
         }}
         onClose={()=>setShowAuth(false)}
+      />}
+      {recoveryToken && <PasswordResetModal
+        token={recoveryToken}
+        onSuccess={()=>{ setRecoveryToken(null); setShowAuth("login"); showToast("✓ パスワードを変更しました。ログインしてください"); }}
+        onClose={()=>setRecoveryToken(null)}
       />}
       {showUpgrade && <UpgradeModal onUpgrade={upgradeToPro} onClose={()=>setShowUpgrade(false)} plan={plan} />}
       {showMaterials && <MaterialsModal altar={currentAltar} onUpdateAltar={(patch)=>updateAltar(currentAltar.id,patch)} canUseMaterial={canUseMaterial} purchasedMaterials={marketMaterials.filter(m=>myPurchaseIds.includes(m.id))} onClose={()=>setShowMaterials(false)} />}
@@ -3524,6 +3561,57 @@ function LayerPanel({ freeItems, goodById, onReorder, onScaleDepth }) {
 }
 
 // ─── Auth Modal ──────────────────────────────────────────────
+function PasswordResetModal({ token, onSuccess, onClose }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirm, setConfirm]         = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState("");
+
+  const handleSubmit = async () => {
+    if (!newPassword) { setError("新しいパスワードを入力してください"); return; }
+    if (newPassword.length < 6) { setError("パスワードは6文字以上にしてください"); return; }
+    if (newPassword !== confirm) { setError("パスワードが一致しません"); return; }
+    setLoading(true); setError("");
+    try {
+      await updatePassword(token, newPassword);
+      onSuccess();
+    } catch(e) {
+      setError(e.message || "エラーが発生しました");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth:400 }} onClick={e=>e.stopPropagation()}>
+        <div style={{ width:40,height:4,borderRadius:2,background:"rgba(255,255,255,0.15)",margin:"-4px auto 18px" }}/>
+        <div style={{ textAlign:"center",marginBottom:20 }}>
+          <div style={{ fontSize:28,marginBottom:6 }}>🔑</div>
+          <div style={{ fontSize:16,fontWeight:800,color:"#e879f9" }}>新しいパスワードを設定</div>
+          <div style={{ fontSize:11,color:"#7c6a9a",marginTop:4 }}>6文字以上で設定してください</div>
+        </div>
+        <div style={S.fieldGroup}>
+          <label style={S.label}>新しいパスワード</label>
+          <input value={newPassword} onChange={e=>setNewPassword(e.target.value)} type="password"
+            placeholder="••••••••" style={S.input} maxLength={100}
+            onKeyDown={e=>e.key==="Enter"&&handleSubmit()} />
+        </div>
+        <div style={S.fieldGroup}>
+          <label style={S.label}>パスワード（確認）</label>
+          <input value={confirm} onChange={e=>setConfirm(e.target.value)} type="password"
+            placeholder="••••••••" style={S.input} maxLength={100}
+            onKeyDown={e=>e.key==="Enter"&&handleSubmit()} />
+        </div>
+        {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600 }}>{error}</div>}
+        <button onClick={handleSubmit} disabled={loading}
+          style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:loading?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#e879f9,#818cf8)",color:loading?"#4b5563":"#fff",fontSize:15,fontWeight:800,cursor:loading?"default":"pointer" }}>
+          {loading ? "更新中…" : "パスワードを変更する"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AuthModal({ mode, session, onLogin, onLogout, onClose }) {
   const [tab, setTab]         = useState(mode==="account"?"account":"login");
   const [email, setEmail]     = useState("");
@@ -3531,6 +3619,7 @@ function AuthModal({ mode, session, onLogin, onLogout, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [success, setSuccess] = useState("");
+  const [forgotMode, setForgotMode] = useState(false);
 
   const handleAuth = async(type) => {
     if (!email.trim()||!password.trim()) { setError("メールアドレスとパスワードを入力してください"); return; }
@@ -3550,6 +3639,18 @@ function AuthModal({ mode, session, onLogin, onLogout, onClose }) {
       else if (msg.includes("already registered")) setError("このメールアドレスはすでに登録されています");
       else if (msg.includes("Email not confirmed")) setError("メールアドレスが確認されていません。届いたメールのリンクをクリックしてください");
       else setError(msg||"エラーが発生しました");
+    }
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) { setError("メールアドレスを入力してください"); return; }
+    setLoading(true); setError("");
+    try {
+      await requestPasswordReset(email.trim());
+      setSuccess("パスワードリセットメールを送信しました。メールのリンクをクリックしてパスワードを再設定してください。");
+    } catch(e) {
+      setError(e.message || "エラーが発生しました");
     }
     setLoading(false);
   };
@@ -3577,43 +3678,88 @@ function AuthModal({ mode, session, onLogin, onLogout, onClose }) {
 
         {/* Login / Signup */}
         {tab!=="account" && (<>
-          <div style={{ display:"flex",gap:8,marginBottom:20 }}>
-            {[["login","ログイン"],["signup","新規登録"]].map(([t,l])=>(
-              <button key={t} onClick={()=>{setTab(t);setError("");setSuccess("");}} style={{ flex:1,padding:"10px",borderRadius:12,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:14,fontWeight:700,cursor:"pointer" }}>{l}</button>
-            ))}
-          </div>
+          {/* 通常のログイン・新規登録タブ（パスワード忘れモードでなければ表示） */}
+          {!forgotMode && (<>
+            <div style={{ display:"flex",gap:8,marginBottom:20 }}>
+              {[["login","ログイン"],["signup","新規登録"]].map(([t,l])=>(
+                <button key={t} onClick={()=>{setTab(t);setError("");setSuccess("");}} style={{ flex:1,padding:"10px",borderRadius:12,border:`1px solid ${tab===t?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.1)"}`,background:tab===t?"rgba(232,121,249,0.15)":"transparent",color:tab===t?"#e879f9":"#9ca3af",fontSize:14,fontWeight:700,cursor:"pointer" }}>{l}</button>
+              ))}
+            </div>
 
-          <div style={{ background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#93c5fd",lineHeight:1.7 }}>
-            {tab==="login"
-              ? "ログインするとデータがクラウドに保存され、どのデバイスからでも使えます。"
-              : "アカウントを作るとデータがクラウドに保存されます。無料で登録できます。"}
-          </div>
+            <div style={{ background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#93c5fd",lineHeight:1.7 }}>
+              {tab==="login"
+                ? "ログインするとデータがクラウドに保存され、どのデバイスからでも使えます。"
+                : "アカウントを作るとデータがクラウドに保存されます。無料で登録できます。"}
+            </div>
 
-          <div style={S.fieldGroup}>
-            <label style={S.label}>メールアドレス</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
-              placeholder="your@email.com" style={S.input} maxLength={100}
-              onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
-          </div>
-          <div style={S.fieldGroup}>
-            <label style={S.label}>パスワード（6文字以上）</label>
-            <input value={password} onChange={e=>setPass(e.target.value)} type="password"
-              placeholder="••••••••" style={S.input} maxLength={100}
-              onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
-          </div>
+            <div style={S.fieldGroup}>
+              <label style={S.label}>メールアドレス</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
+                placeholder="your@email.com" style={S.input} maxLength={100}
+                onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.label}>パスワード（6文字以上）</label>
+              <input value={password} onChange={e=>setPass(e.target.value)} type="password"
+                placeholder="••••••••" style={S.input} maxLength={100}
+                onKeyDown={e=>e.key==="Enter"&&handleAuth(tab)}/>
+            </div>
 
-          {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{error}</div>}
-          {success && <div style={{ color:"#4ade80",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{success}</div>}
+            {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{error}</div>}
+            {success && <div style={{ color:"#4ade80",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{success}</div>}
 
-          <button onClick={()=>handleAuth(tab)} disabled={loading}
-            style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:loading?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#e879f9,#818cf8)",color:loading?"#4b5563":"#fff",fontSize:15,fontWeight:800,cursor:loading?"default":"pointer",marginBottom:12 }}>
-            {loading?"処理中…":tab==="login"?"ログイン":"アカウントを作成"}
-          </button>
+            <button onClick={()=>handleAuth(tab)} disabled={loading}
+              style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:loading?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#e879f9,#818cf8)",color:loading?"#4b5563":"#fff",fontSize:15,fontWeight:800,cursor:loading?"default":"pointer",marginBottom:10 }}>
+              {loading?"処理中…":tab==="login"?"ログイン":"アカウントを作成"}
+            </button>
 
-          <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",lineHeight:1.7 }}>
-            ログインしなくてもSAIDANは使えます。<br/>
-            ログインするとデータがクラウドに同期されます。
-          </div>
+            {/* パスワードお忘れリンク（ログインタブのみ表示） */}
+            {tab==="login" && (
+              <div style={{ textAlign:"center",marginBottom:10 }}>
+                <button onClick={()=>{ setForgotMode(true); setError(""); setSuccess(""); }}
+                  style={{ background:"none",border:"none",color:"#818cf8",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>
+                  パスワードをお忘れの方はこちら
+                </button>
+              </div>
+            )}
+
+            <div style={{ fontSize:10,color:"#4b5563",textAlign:"center",lineHeight:1.7 }}>
+              ログインしなくてもSAIDANは使えます。<br/>
+              ログインするとデータがクラウドに同期されます。
+            </div>
+          </>)}
+
+          {/* パスワードリセット送信フォーム */}
+          {forgotMode && (<>
+            <div style={{ textAlign:"center",marginBottom:18 }}>
+              <div style={{ fontSize:24,marginBottom:6 }}>📧</div>
+              <div style={{ fontSize:15,fontWeight:800,color:"#e879f9",marginBottom:4 }}>パスワードをお忘れですか？</div>
+              <div style={{ fontSize:11,color:"#7c6a9a",lineHeight:1.6 }}>登録したメールアドレスを入力してください。<br/>パスワード再設定用のリンクをお送りします。</div>
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.label}>メールアドレス</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
+                placeholder="your@email.com" style={S.input} maxLength={100}
+                onKeyDown={e=>e.key==="Enter"&&handleForgotPassword()}/>
+            </div>
+
+            {error && <div style={{ color:"#f87171",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.5 }}>{error}</div>}
+            {success && <div style={{ color:"#4ade80",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.7 }}>{success}</div>}
+
+            {!success && (
+              <button onClick={handleForgotPassword} disabled={loading}
+                style={{ width:"100%",padding:"13px",borderRadius:14,border:"none",background:loading?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#e879f9,#818cf8)",color:loading?"#4b5563":"#fff",fontSize:15,fontWeight:800,cursor:loading?"default":"pointer",marginBottom:10 }}>
+                {loading ? "送信中…" : "リセットメールを送信"}
+              </button>
+            )}
+
+            <div style={{ textAlign:"center" }}>
+              <button onClick={()=>{ setForgotMode(false); setError(""); setSuccess(""); }}
+                style={{ background:"none",border:"none",color:"#818cf8",fontSize:11,cursor:"pointer",textDecoration:"underline",padding:0 }}>
+                ← ログインに戻る
+              </button>
+            </div>
+          </>)}
         </>)}
       </div>
     </div>
