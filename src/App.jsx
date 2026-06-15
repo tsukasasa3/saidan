@@ -3575,6 +3575,20 @@ function PasswordResetModal({ token, onSuccess, onClose }) {
     if (newPassword !== confirm) { setError("パスワードが一致しません"); return; }
     setLoading(true); setError("");
     try {
+      // リカバリートークン（JWT）からメールアドレスを取得して現在のパスワードと同じか確認
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const email = payload?.email;
+      if (email) {
+        try {
+          await signIn(email, newPassword);
+          // サインイン成功 = 新パスワードが現在と同じ
+          setError("現在と同じパスワードは使用できません。別のパスワードを設定してください。");
+          setLoading(false);
+          return;
+        } catch {
+          // サインイン失敗 = 新パスワードは現在と異なる → OK
+        }
+      }
       await updatePassword(token, newPassword);
       onSuccess();
     } catch(e) {
