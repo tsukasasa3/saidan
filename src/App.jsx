@@ -469,6 +469,8 @@ export default function App() {
       if (token) {
         setRecoveryToken(token);
         window.history.replaceState({}, "", "/");
+        // チュートリアル・ようこそ画面をスキップ
+        localStorage.setItem("tutorialSeen", "1");
       }
     }
   },[]);
