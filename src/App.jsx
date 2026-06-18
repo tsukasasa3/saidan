@@ -732,8 +732,6 @@ export default function App() {
 
       {showAdd && <AddModal onClose={()=>setShowAdd(false)} onAdd={addGood} characters={characters} isPro={isPro} />}
       {showTemplates && <TemplateModal current={currentAltar.templateId} customColors={currentAltar.customColors}
-        nameColor={currentAltar.nameColor}
-        onNameColorChange={(c)=>updateAltar(currentAltar.id,{nameColor:c})}
         onSelect={(tid,cc)=>{ updateAltar(currentAltar.id,{templateId:tid,...(cc!==undefined?{customColors:cc}:{})}); setShowTemplates(false); showToast("テンプレートを更新しました ✓"); }}
         onClose={()=>setShowTemplates(false)} />}
       {showShare && <ShareModal altar={currentAltar} template={currentTemplate} goodById={goodById} goods={goods} onClose={()=>setShowShare(false)} />}
@@ -1776,16 +1774,37 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       {/* Altar name */}
       <div style={{ marginBottom:12 }}>
         {editingName?(
-          <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
-            <input ref={nameRef} value={nameInput} onChange={e=>setNameInput(e.target.value)} onBlur={commitName} onKeyDown={e=>{if(e.key==="Enter")commitName();if(e.key==="Escape"){setNameInput(altar.name);setEditingName(false);}}} maxLength={30}
-              style={{ flex:1,minWidth:0,fontSize:20,fontWeight:800,background:"transparent",border:"none",borderBottom:"2px solid #e879f9",color:isDark?"#f0e8ff":"#1a0030",outline:"none",padding:"2px 4px" }}/>
-            <button
-              onMouseDown={e=>{e.preventDefault(); onUpdateAltar({hideEmojiDecor:!altar.hideEmojiDecor});}}
-              title={altar.hideEmojiDecor?"絵文字を表示する":"絵文字を非表示にする"}
-              style={{ fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:altar.hideEmojiDecor?"rgba(255,255,255,0.06)":"rgba(232,121,249,0.15)",color:altar.hideEmojiDecor?"#6b7280":"#e879f9",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0 }}>
-              {altar.hideEmojiDecor ? "⛩ OFF" : "⛩ ON"}
-            </button>
-            <button onClick={commitName} style={S.nameSaveBtn}>完了</button>
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {/* 名前入力行 */}
+            <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+              <input ref={nameRef} value={nameInput} onChange={e=>setNameInput(e.target.value)} onBlur={commitName} onKeyDown={e=>{if(e.key==="Enter")commitName();if(e.key==="Escape"){setNameInput(altar.name);setEditingName(false);}}} maxLength={30}
+                style={{ flex:1,minWidth:0,fontSize:20,fontWeight:800,background:"transparent",border:"none",borderBottom:"2px solid #e879f9",color:altar.nameColor||(isDark?"#f0e8ff":"#1a0030"),outline:"none",padding:"2px 4px" }}/>
+              <button
+                onMouseDown={e=>{e.preventDefault(); onUpdateAltar({hideEmojiDecor:!altar.hideEmojiDecor});}}
+                title={altar.hideEmojiDecor?"絵文字を表示する":"絵文字を非表示にする"}
+                style={{ fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:altar.hideEmojiDecor?"rgba(255,255,255,0.06)":"rgba(232,121,249,0.15)",color:altar.hideEmojiDecor?"#6b7280":"#e879f9",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0 }}>
+                {altar.hideEmojiDecor ? "⛩ OFF" : "⛩ ON"}
+              </button>
+              <button onClick={commitName} style={S.nameSaveBtn}>完了</button>
+            </div>
+            {/* 文字色ピッカー行 */}
+            <div style={{ display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" }}>
+              <span style={{ fontSize:10,color:"#7c6a9a",whiteSpace:"nowrap" }}>文字色</span>
+              {["#f0e8ff","#ffffff","#e879f9","#818cf8","#4ade80","#fbbf24","#f87171","#38bdf8","#fb923c","#a78bfa","#000000"].map(c=>(
+                <div key={c} onMouseDown={e=>{ e.preventDefault(); onUpdateAltar({nameColor:c}); }}
+                  style={{ width:22,height:22,borderRadius:"50%",background:c,border:`2px solid ${(altar.nameColor||"#f0e8ff")===c?"#e879f9":"rgba(255,255,255,0.2)"}`,cursor:"pointer",flexShrink:0 }}/>
+              ))}
+              {/* カスタムカラーピッカー */}
+              <input type="color" value={altar.nameColor||"#f0e8ff"}
+                onMouseDown={e=>e.stopPropagation()}
+                onChange={e=>onUpdateAltar({nameColor:e.target.value})}
+                style={{ width:22,height:22,border:"none",borderRadius:"50%",cursor:"pointer",padding:0,background:"transparent",flexShrink:0 }}
+                title="カスタムカラー"/>
+              {altar.nameColor&&(
+                <button onMouseDown={e=>{ e.preventDefault(); onUpdateAltar({nameColor:null}); }}
+                  style={{ fontSize:10,color:"#6b7280",background:"none",border:"none",cursor:"pointer",padding:"0 4px" }}>リセット</button>
+              )}
+            </div>
           </div>
         ):(
           <div style={{ display:"flex",alignItems:"center",gap:8,cursor:viewingShared?"default":"pointer" }} onClick={()=>!viewingShared&&(setNameInput(altar.name),setEditingName(true),setTimeout(()=>nameRef.current?.focus(),30))}>
@@ -2894,9 +2913,7 @@ function UpgradeModal({ onUpgrade, onClose, plan }) {
 }
 
 // ─── Template Modal ───────────────────────────────────────────
-function TemplateModal({ current, customColors, nameColor, onNameColorChange, onSelect, onClose }) {
-  const NAME_PRESETS = ["#f0e8ff","#ffffff","#e879f9","#818cf8","#4ade80","#fbbf24","#f87171","#38bdf8","#fb923c","#f472b6","#a78bfa","#000000"];
-  const [nameColorInput, setNameColorInput] = useState(nameColor||"#f0e8ff");
+function TemplateModal({ current, customColors, onSelect, onClose }) {
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal,maxWidth:500 }} onClick={e=>e.stopPropagation()}>
@@ -2923,39 +2940,6 @@ function TemplateModal({ current, customColors, nameColor, onNameColorChange, on
             );
           })}
         </div>
-        {/* 名前の色 */}
-        <div style={{ marginTop:14, background:"rgba(255,255,255,0.03)", border:`1px solid ${nameColor?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`, borderRadius:12, padding:"12px 14px" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10 }}>
-            <span style={{ fontSize:13,fontWeight:700,color:nameColor?"#e879f9":"#f0e8ff" }}>✏ 名前の文字色</span>
-            {nameColor&&<button onClick={()=>{ onNameColorChange(null); setNameColorInput("#f0e8ff"); }}
-              style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ デフォルトに戻す</button>}
-          </div>
-          {/* プリセット */}
-          <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
-            {NAME_PRESETS.map(c=>(
-              <button key={c} onClick={()=>{ setNameColorInput(c); onNameColorChange(c); }}
-                style={{ width:28,height:28,borderRadius:8,background:c,border:`2px solid ${(nameColor||"#f0e8ff")===c?"#e879f9":"rgba(255,255,255,0.15)"}`,cursor:"pointer",flexShrink:0,transition:"transform 0.1s" }}
-                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
-                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}/>
-            ))}
-          </div>
-          {/* カスタムカラー */}
-          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-            <input type="color" value={nameColorInput}
-              onChange={e=>{ setNameColorInput(e.target.value); onNameColorChange(e.target.value); }}
-              style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
-            <input type="text" value={nameColorInput} maxLength={7}
-              onChange={e=>{ setNameColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onNameColorChange(e.target.value); }}
-              placeholder="#f0e8ff"
-              style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
-            <div style={{ width:36,height:36,borderRadius:8,background:nameColorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
-          </div>
-          {/* プレビュー */}
-          <div style={{ marginTop:10,textAlign:"center",fontSize:16,fontWeight:900,letterSpacing:2,color:nameColor||"#f0e8ff",background:"rgba(0,0,0,0.3)",borderRadius:8,padding:"8px 0" }}>
-            祭壇の名前
-          </div>
-        </div>
-
         <div style={{ marginTop:12,padding:"8px 12px",background:"rgba(129,140,248,0.06)",border:"1px solid rgba(129,140,248,0.15)",borderRadius:10,fontSize:11,color:"#a5b4fc",lineHeight:1.6 }}>
           💡 背景の色やアクセントカラーを細かく変えたい場合は <strong style={{ color:"#818cf8" }}>🌌 背景 → ✏ カスタム</strong> から設定できます
         </div>
