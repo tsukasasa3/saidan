@@ -49,9 +49,26 @@ export default async function handler(req, res) {
     const userId     = session.metadata?.userId;
     const amountPaid = session.amount_total; // JPY整数
 
+    // 支払いが完了していない場合はスキップ（unpaid / no_payment_required以外は無視）
+    if (session.payment_status !== "paid") {
+      console.log(`Skipping session with payment_status=${session.payment_status}`);
+      return res.json({ received: true });
+    }
+
     if (!materialId || !userId) {
       console.error("Missing metadata:", session.metadata);
       return res.json({ received: true });
+    }
+
+    // Webhookの再送による二重記録を防ぐ（payment_intentで重複チェック）
+    if (session.payment_intent) {
+      const existing = await sbAdmin(
+        `/rest/v1/purchases?stripe_payment_intent=eq.${session.payment_intent}&select=id`
+      );
+      if (existing?.length > 0) {
+        console.log(`Duplicate webhook ignored: payment_intent=${session.payment_intent}`);
+        return res.json({ received: true });
+      }
     }
 
     try {
