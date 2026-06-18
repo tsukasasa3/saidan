@@ -2112,7 +2112,9 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
   const [bgTab, setBgTab] = useState(altar.customColors?"custom":altar.bgCustomColor?"solid":"solid");
 
   // ── 単色タブ state ──
+  const [solidMode, setSolidMode] = useState("solid"); // "solid" | "gradient"
   const [colorInput, setColorInput] = useState(altar.bgCustomColor||"#1a0a2e");
+  const [gradBase,   setGradBase]   = useState("#1a0a2e");
   const PRESET_COLORS = [
     { hex:"#0c0a14", name:"ディープブラック" }, { hex:"#1a0a2e", name:"ミッドナイト" },
     { hex:"#0a1628", name:"ネイビー" },         { hex:"#1a0505", name:"ダークレッド" },
@@ -2125,6 +2127,28 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
     if (/^#[0-9a-fA-F]{6}$/.test(hex)) onUpdateAltar({ bgCustomColor: hex, bgMaterialId: null });
   };
   const clearCustomColor = () => onUpdateAltar({ bgCustomColor: null });
+
+  // ── グラデーション生成ヘルパー ──
+  const scaleHex = (hex, factor) => {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    const clamp = v => Math.min(255, Math.max(0, Math.round(v)));
+    return `#${[r,g,b].map(v=>clamp(v*factor).toString(16).padStart(2,"0")).join("")}`;
+  };
+  const makeGradVariants = (base) => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(base)) return [];
+    const dark1 = scaleHex(base, 0.35);
+    const dark2 = scaleHex(base, 0.55);
+    const dark3 = scaleHex(base, 0.15);
+    const light1= scaleHex(base, 1.5);
+    return [
+      { label:"上暗→下ベース",  css:`linear-gradient(180deg,${dark1},${base})` },
+      { label:"上ベース→下暗",  css:`linear-gradient(180deg,${base},${dark1})` },
+      { label:"深め（上↓下）",   css:`linear-gradient(180deg,${dark3},${dark2})` },
+      { label:"斜めグラデ",      css:`linear-gradient(135deg,${dark1},${base},${dark2})` },
+      { label:"上明→下暗",       css:`linear-gradient(180deg,${light1},${dark1})` },
+      { label:"放射状",          css:`radial-gradient(ellipse at top,${base},${dark3})` },
+    ];
+  };
 
   // ── カスタムカラータブ state ──
   const baseTemplate = TEMPLATES.find(t=>t.id===altar.templateId)||TEMPLATES[0];
@@ -2219,25 +2243,65 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
         {/* ── 単色タブ ── */}
         {bgTab==="solid"&&(
           <div>
-            <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
-              {PRESET_COLORS.map(c=>(
-                <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
-                  style={{ width:32,height:32,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.12)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
-                  onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
-                  onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}/>
+            {/* 単色 / グラデーション トグル */}
+            <div style={{ display:"flex",gap:6,marginBottom:12 }}>
+              {[["solid","🎨 単色"],["gradient","🌈 グラデーション"]].map(([m,l])=>(
+                <button key={m} onClick={()=>setSolidMode(m)}
+                  style={{ flex:1,padding:"7px",borderRadius:10,border:`1px solid ${solidMode===m?"rgba(129,140,248,0.5)":"rgba(255,255,255,0.08)"}`,background:solidMode===m?"rgba(129,140,248,0.15)":"transparent",color:solidMode===m?"#818cf8":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer" }}>{l}</button>
               ))}
             </div>
-            <div style={{ display:"flex",gap:8,alignItems:"center",marginBottom:12 }}>
-              <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
-                style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
-              <input type="text" value={colorInput}
-                onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
-                placeholder="#000000" maxLength={7}
-                style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
-              <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
-            </div>
+
+            {/* 単色モード */}
+            {solidMode==="solid"&&(<>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
+                {PRESET_COLORS.map(c=>(
+                  <button key={c.hex} title={c.name} onClick={()=>{ setColorInput(c.hex); applyCustomColor(c.hex); }}
+                    style={{ width:32,height:32,borderRadius:8,background:c.hex,border:`2px solid ${altar.bgCustomColor===c.hex?"#22c55e":"rgba(255,255,255,0.12)"}`,cursor:"pointer",transition:"transform 0.1s",flexShrink:0 }}
+                    onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
+                    onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}/>
+                ))}
+              </div>
+              <div style={{ display:"flex",gap:8,alignItems:"center",marginBottom:12 }}>
+                <input type="color" value={colorInput} onChange={e=>{ setColorInput(e.target.value); applyCustomColor(e.target.value); }}
+                  style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
+                <input type="text" value={colorInput}
+                  onChange={e=>{ setColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyCustomColor(e.target.value); }}
+                  placeholder="#000000" maxLength={7}
+                  style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+                <div style={{ width:36,height:36,borderRadius:8,background:colorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+              </div>
+            </>)}
+
+            {/* グラデーションモード */}
+            {solidMode==="gradient"&&(<>
+              <div style={{ fontSize:11,color:"#7c6a9a",marginBottom:8 }}>ベースカラーを選ぶと自動でグラデーションを生成します</div>
+              {/* ベースカラーピッカー */}
+              <div style={{ display:"flex",gap:8,alignItems:"center",marginBottom:12 }}>
+                <input type="color" value={gradBase} onChange={e=>setGradBase(e.target.value)}
+                  style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
+                <input type="text" value={gradBase} maxLength={7}
+                  onChange={e=>{ if(/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setGradBase(e.target.value); }}
+                  placeholder="#1a0a2e" style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+                <div style={{ width:36,height:36,borderRadius:8,background:`linear-gradient(180deg,${scaleHex(gradBase,0.35)||gradBase},${gradBase})`,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+              </div>
+              {/* バリエーション一覧（タップで即適用） */}
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12 }}>
+                {makeGradVariants(gradBase).map((v,i)=>{
+                  const isActive = altar.bgCustomColor===v.css;
+                  return (
+                    <div key={i} onClick={()=>onUpdateAltar({bgCustomColor:v.css,bgMaterialId:null})}
+                      style={{ borderRadius:10,overflow:"hidden",cursor:"pointer",border:`2px solid ${isActive?"#818cf8":"transparent"}`,position:"relative" }}>
+                      <div style={{ height:52,background:v.css }}/>
+                      <div style={{ background:"rgba(0,0,0,0.55)",padding:"3px 0",textAlign:"center",fontSize:9,color:isActive?"#818cf8":"#9ca3af",fontWeight:isActive?700:400 }}>{v.label}</div>
+                      {isActive&&<div style={{ position:"absolute",top:4,right:4,background:"#818cf8",borderRadius:"50%",width:14,height:14,fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
+
             {hasActiveSolid&&(
-              <button onClick={clearCustomColor} style={{ width:"100%",padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,cursor:"pointer" }}>✕ 単色を解除</button>
+              <button onClick={clearCustomColor} style={{ width:"100%",padding:"8px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"#9ca3af",fontSize:12,cursor:"pointer" }}>✕ 解除</button>
             )}
           </div>
         )}
