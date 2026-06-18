@@ -2346,6 +2346,107 @@ function BgModal({ altar, onUpdateAltar, onClose }) {
 }
 
 // ─── Materials Modal ──────────────────────────────────────────
+// LINEスタンプ風 購入済みクリエイター素材セクション
+function CreatorMaterialsSection({ tab, creatorFrames, creatorDecoPacks, altar, onUpdateAltar }) {
+  const firstPackId = creatorDecoPacks[0]?.id || null;
+  const [selectedPackId, setSelectedPackId] = useState(firstPackId);
+
+  // 選択中のパック（存在しなければ先頭に戻す）
+  const activePack = creatorDecoPacks.find(p=>p.id===selectedPackId) || creatorDecoPacks[0];
+  const activeItems = activePack?.material_items || [];
+
+  return (
+    <div style={{ marginTop:14 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:"#a78bfa", marginBottom:8 }}>🛍 購入したクリエイター素材</div>
+
+      {/* フレームタブ：グリッド表示 */}
+      {tab==="frame" && creatorFrames.length>0 && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:8 }}>
+          {creatorFrames.map(m=>{
+            const fileUrl = m.material_items?.[0]?.file_url;
+            const active  = altar.frameCustomImage===fileUrl;
+            return (
+              <div key={m.id} onClick={()=>active ? onUpdateAltar({frameCustomImage:null}) : onUpdateAltar({frameCustomImage:fileUrl, frameMaterialId:null, frameCustomColor:null})}
+                style={{ borderRadius:12, padding:"10px 8px", textAlign:"center", cursor:"pointer",
+                  background:active?"rgba(167,139,250,0.2)":"rgba(255,255,255,0.04)",
+                  border:`2px solid ${active?"#a78bfa":"rgba(255,255,255,0.08)"}`, position:"relative" }}>
+                {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#a78bfa",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
+                {m.thumbnail_url
+                  ? <img src={m.thumbnail_url} alt={m.name} style={{ width:44,height:44,objectFit:"contain",margin:"0 auto 4px",display:"block" }}/>
+                  : <div style={{ fontSize:28,marginBottom:4 }}>🖼</div>}
+                <div style={{ fontSize:10,fontWeight:700,color:active?"#a78bfa":"#f0e8ff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{m.name}</div>
+                <div style={{ fontSize:8,color:"#7c6a9a",marginTop:1 }}>{m.creator_profiles?.display_name}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* デコタブ：LINEスタンプ風UI */}
+      {tab==="deco" && creatorDecoPacks.length>0 && (<>
+        {/* パックサムネイル横スクロールバー */}
+        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:8,
+          borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+          {creatorDecoPacks.map(pack=>{
+            const isSelected = (activePack?.id===pack.id);
+            return (
+              <div key={pack.id} onClick={()=>setSelectedPackId(pack.id)}
+                style={{ flexShrink:0, width:44, height:44, borderRadius:10, overflow:"hidden", cursor:"pointer",
+                  border:`2px solid ${isSelected?"#a78bfa":"transparent"}`,
+                  background:"rgba(255,255,255,0.05)", position:"relative" }}>
+                {pack.thumbnail_url
+                  ? <img src={pack.thumbnail_url} alt={pack.name} style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                  : <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>🎀</div>}
+                {isSelected && <div style={{ position:"absolute",bottom:0,left:0,right:0,height:2,background:"#a78bfa",borderRadius:"0 0 8px 8px" }}/>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 選択中パックのパック名 */}
+        {activePack && (
+          <div style={{ fontSize:10, color:"#7c6a9a", marginBottom:8 }}>
+            <span style={{ fontWeight:700, color:"#c4b5fd" }}>{activePack.name}</span>
+            　{activePack.creator_profiles?.display_name}
+          </div>
+        )}
+
+        {/* アイテムグリッド */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:8 }}>
+          {activeItems.map(item=>{
+            const alreadyAdded = (altar.decoItems||[]).some(d=>d.customImage===item.file_url);
+            return (
+              <div key={item.id} onClick={()=>{
+                const cur = altar.decoItems||[];
+                onUpdateAltar({ decoItems:[...cur,{
+                  id:newUid(), materialId:"custom",
+                  customImage:item.file_url,
+                  customName:item.item_name,
+                  x:150+Math.random()*200, y:100+Math.random()*150,
+                  scale:1.5, zIndex:(cur.length+1)*10
+                }]});
+              }} style={{ borderRadius:10, padding:"8px 4px", textAlign:"center", cursor:"pointer",
+                background:alreadyAdded?"rgba(167,139,250,0.15)":"rgba(255,255,255,0.04)",
+                border:`1px solid ${alreadyAdded?"rgba(167,139,250,0.4)":"rgba(255,255,255,0.08)"}`,
+                position:"relative" }}>
+                {alreadyAdded&&<div style={{ position:"absolute",top:3,right:3,fontSize:8,background:"rgba(167,139,250,0.6)",color:"#fff",borderRadius:4,padding:"1px 4px",fontWeight:700 }}>✓</div>}
+                <img src={item.file_url} alt={item.item_name} style={{ width:48,height:48,objectFit:"contain",margin:"0 auto 4px",display:"block" }}
+                  onError={e=>{ e.target.style.display="none"; }}/>
+                <div style={{ fontSize:9,color:"#9ca3af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.item_name}</div>
+              </div>
+            );
+          })}
+          {activeItems.length===0 && (
+            <div style={{ gridColumn:"1/-1", textAlign:"center", padding:"24px 0", color:"#4b5563", fontSize:12 }}>
+              アイテムがありません
+            </div>
+          )}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
 function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMaterials, onClose }) {
   const [tab, setTab] = useState("frame");
   const [frameColorInput, setFrameColorInput] = useState(altar.frameCustomColor||"#f59e0b");
@@ -2541,71 +2642,18 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMateria
         {/* ── クリエイター素材セクション ── */}
         {(()=>{
           const pm = purchasedMaterials||[];
-          const creatorFrames = tab==="frame" ? pm.filter(m=>m.type==="frame") : [];
-          const creatorDecoPacks = tab==="deco" ? pm.filter(m=>m.type==="deco_pack") : [];
-          const allDecoItems = creatorDecoPacks.flatMap(m=>(m.material_items||[]).map(item=>({...item, materialName:m.name})));
-
-          if (!creatorFrames.length && !allDecoItems.length) return null;
+          const creatorFrames    = tab==="frame"   ? pm.filter(m=>m.type==="frame")    : [];
+          const creatorDecoPacks = tab==="deco"    ? pm.filter(m=>m.type==="deco_pack") : [];
+          if (!creatorFrames.length && !creatorDecoPacks.length) return null;
 
           return (
-            <div style={{ marginTop:14, marginBottom:4 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:"#a78bfa", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
-                🛍 購入したクリエイター素材
-              </div>
-
-              {/* フレーム */}
-              {creatorFrames.length>0&&(
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:8 }}>
-                  {creatorFrames.map(m=>{
-                    const fileUrl = m.material_items?.[0]?.file_url;
-                    const active = altar.frameCustomImage===fileUrl;
-                    return (
-                      <div key={m.id} onClick={()=>{
-                        if (active) { onUpdateAltar({frameCustomImage:null}); }
-                        else { onUpdateAltar({frameCustomImage:fileUrl, frameMaterialId:null, frameCustomColor:null}); }
-                      }} style={{ borderRadius:12, padding:"10px 8px", textAlign:"center", cursor:"pointer",
-                        background:active?"rgba(167,139,250,0.2)":"rgba(255,255,255,0.04)",
-                        border:`2px solid ${active?"#a78bfa":"rgba(255,255,255,0.08)"}`, position:"relative" }}>
-                        {active&&<div style={{ position:"absolute",top:5,right:5,width:14,height:14,borderRadius:"50%",background:"#a78bfa",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900 }}>✓</div>}
-                        {m.thumbnail_url
-                          ? <img src={m.thumbnail_url} alt={m.name} style={{ width:44,height:44,objectFit:"contain",margin:"0 auto 4px",display:"block" }}/>
-                          : <div style={{ fontSize:28,marginBottom:4 }}>🖼</div>}
-                        <div style={{ fontSize:10,fontWeight:700,color:active?"#a78bfa":"#f0e8ff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{m.name}</div>
-                        <div style={{ fontSize:8,color:"#7c6a9a",marginTop:1 }}>{m.creator_profiles?.display_name}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* デコパックアイテム */}
-              {allDecoItems.length>0&&(
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:8 }}>
-                  {allDecoItems.map(item=>{
-                    const alreadyAdded = (altar.decoItems||[]).some(d=>d.customImage===item.file_url);
-                    return (
-                      <div key={item.id} onClick={()=>{
-                        const cur = altar.decoItems||[];
-                        onUpdateAltar({ decoItems:[...cur,{
-                          id:newUid(), materialId:"custom",
-                          customImage:item.file_url,
-                          customName:item.item_name,
-                          x:150+Math.random()*200, y:100+Math.random()*150,
-                          scale:1.5, zIndex:(cur.length+1)*10
-                        }]});
-                      }} style={{ borderRadius:10, padding:"8px 4px", textAlign:"center", cursor:"pointer",
-                        background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
-                        position:"relative" }}>
-                        {alreadyAdded&&<div style={{ position:"absolute",top:3,right:3,fontSize:8,background:"rgba(167,139,250,0.5)",color:"#fff",borderRadius:4,padding:"1px 4px",fontWeight:700 }}>✓</div>}
-                        <img src={item.file_url} alt={item.item_name} style={{ width:48,height:48,objectFit:"contain",margin:"0 auto 4px",display:"block" }}
-                          onError={e=>{ e.target.style.display="none"; }}/>
-                        <div style={{ fontSize:9,color:"#9ca3af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.item_name}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <CreatorMaterialsSection
+              tab={tab}
+              creatorFrames={creatorFrames}
+              creatorDecoPacks={creatorDecoPacks}
+              altar={altar}
+              onUpdateAltar={onUpdateAltar}
+            />
           );
         })()}
 
