@@ -308,6 +308,7 @@ const STATUS = {
 };
 
 const TEMPLATES = [
+  { id:"none",   name:"なし",     emoji:"✕",  desc:"テンプレートをオフ", bg:"#0c0a14",                                  accent:"#6b7280", gold:"#9ca3af", floor:"rgba(255,255,255,0.03)", border:"rgba(255,255,255,0.08)", plank:"linear-gradient(180deg,#1e1b2e,#0c0a14)", star:false },
   { id:"shrine", name:"神社",     emoji:"⛩",  desc:"厳かな赤と金",     bg:"linear-gradient(180deg,#1a0505,#2d0a0a)", accent:"#dc2626", gold:"#f59e0b", floor:"rgba(220,38,38,0.12)",   border:"rgba(220,38,38,0.4)",   plank:"linear-gradient(180deg,#7c1a1a,#4a0d0d)", star:false },
   { id:"night",  name:"星夜",     emoji:"🌌", desc:"満天の星空",        bg:"linear-gradient(180deg,#020817,#0f172a)", accent:"#818cf8", gold:"#e879f9", floor:"rgba(129,140,248,0.08)", border:"rgba(129,140,248,0.3)", plank:"linear-gradient(180deg,#1e1b4b,#0f0a2a)", star:true  },
   { id:"pastel", name:"パステル", emoji:"🌸", desc:"やわらかいピンク",  bg:"linear-gradient(180deg,#fdf2f8,#fce7f3)", accent:"#ec4899", gold:"#f472b6", floor:"rgba(236,72,153,0.07)",  border:"rgba(236,72,153,0.25)", plank:"linear-gradient(180deg,#fbcfe8,#f9a8d4)", star:false, dark:false },
@@ -571,7 +572,7 @@ export default function App() {
   };
 
   const goodById = (id)=>goods.find(g=>g.id===id);
-  const getTemplate = (a)=>{ const base=TEMPLATES.find(t=>t.id===(a?.templateId||"shrine"))||TEMPLATES[0]; return a?.customColors?{...base,...a.customColors}:base; };
+  const getTemplate = (a)=>{ const base=TEMPLATES.find(t=>t.id===(a?.templateId||"shrine"))||TEMPLATES.find(t=>t.id==="shrine")||TEMPLATES[0]; return a?.customColors?{...base,...a.customColors}:base; };
 
   const counts = {
     total:goods.length, owned:goods.filter(g=>g.status==="owned").length,
@@ -2835,14 +2836,23 @@ function TemplateModal({ current, customColors, onSelect, onClose }) {
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10 }}>
-          {TEMPLATES.map(t=>(
-            <button key={t.id} onClick={()=>onSelect(t.id,null)} style={{ background:t.bg,border:`2px solid ${current===t.id&&!customColors?t.accent:"transparent"}`,borderRadius:14,padding:"14px 8px",cursor:"pointer",textAlign:"center",transition:"all 0.2s",position:"relative",overflow:"hidden" }}>
-              {current===t.id&&!customColors&&<div style={{ position:"absolute",top:5,right:5,fontSize:9,background:t.accent,color:"#fff",borderRadius:20,padding:"1px 5px",fontWeight:700 }}>✓</div>}
-              <div style={{ fontSize:26,marginBottom:5 }}>{t.emoji}</div>
-              <div style={{ fontSize:12,fontWeight:800,color:t.dark===false?"#1a0030":"#f0e8ff" }}>{t.name}</div>
-              <div style={{ fontSize:9,color:t.accent,marginTop:2 }}>{t.desc}</div>
-            </button>
-          ))}
+          {TEMPLATES.map(t=>{
+            const isActive = current===t.id && !customColors;
+            const isNone   = t.id==="none";
+            return (
+              <button key={t.id} onClick={()=>onSelect(t.id,null)}
+                style={{ background:isNone?"rgba(255,255,255,0.04)":t.bg,
+                  border:`2px solid ${isActive?(isNone?"#6b7280":t.accent):"transparent"}`,
+                  borderRadius:14, padding:"14px 8px", cursor:"pointer", textAlign:"center",
+                  transition:"all 0.2s", position:"relative", overflow:"hidden",
+                  ...(isNone?{ border:`2px dashed ${isActive?"#6b7280":"rgba(255,255,255,0.15)"}` }:{}) }}>
+                {isActive&&<div style={{ position:"absolute",top:5,right:5,fontSize:9,background:isNone?"#6b7280":t.accent,color:"#fff",borderRadius:20,padding:"1px 5px",fontWeight:700 }}>✓</div>}
+                <div style={{ fontSize:26,marginBottom:5 }}>{t.emoji}</div>
+                <div style={{ fontSize:12,fontWeight:800,color:t.dark===false?"#1a0030":isNone?"#6b7280":"#f0e8ff" }}>{t.name}</div>
+                <div style={{ fontSize:9,color:isNone?"#4b5563":t.accent,marginTop:2 }}>{t.desc}</div>
+              </button>
+            );
+          })}
         </div>
         <div style={{ marginTop:12,padding:"8px 12px",background:"rgba(129,140,248,0.06)",border:"1px solid rgba(129,140,248,0.15)",borderRadius:10,fontSize:11,color:"#a5b4fc",lineHeight:1.6 }}>
           💡 背景の色やアクセントカラーを細かく変えたい場合は <strong style={{ color:"#818cf8" }}>🌌 背景 → ✏ カスタム</strong> から設定できます
