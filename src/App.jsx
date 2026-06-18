@@ -1777,7 +1777,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {/* 名前入力行 */}
             <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
-              <input ref={nameRef} value={nameInput} onChange={e=>setNameInput(e.target.value)} onBlur={commitName} onKeyDown={e=>{if(e.key==="Enter")commitName();if(e.key==="Escape"){setNameInput(altar.name);setEditingName(false);}}} maxLength={30}
+              <input ref={nameRef} value={nameInput} onChange={e=>setNameInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")commitName();if(e.key==="Escape"){setNameInput(altar.name);setEditingName(false);}}} maxLength={30}
                 style={{ flex:1,minWidth:0,fontSize:20,fontWeight:800,background:"transparent",border:"none",borderBottom:"2px solid #e879f9",color:isDark?"#f0e8ff":"#1a0030",outline:"none",padding:"2px 4px" }}/>
               <button
                 onMouseDown={e=>{e.preventDefault(); onUpdateAltar({hideEmojiDecor:!altar.hideEmojiDecor});}}
@@ -1792,7 +1792,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
                 <span style={{ fontSize:10,color:"#7c6a9a" }}>文字色</span>
                 {altar.nameColor&&(
-                  <button onMouseDown={e=>{ e.preventDefault(); onUpdateAltar({nameColor:null}); }}
+                  <button onClick={()=>onUpdateAltar({nameColor:null})}
                     style={{ fontSize:10,color:"#6b7280",background:"none",border:"none",cursor:"pointer",padding:0 }}>リセット</button>
                 )}
               </div>
@@ -1803,7 +1803,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
                   "#4ade80","#a3e635","#fbbf24","#fb923c","#f87171","#f472b6","#e11d48",
                   "#f59e0b","#10b981","#06b6d4",
                 ].map(c=>(
-                  <div key={c} onMouseDown={e=>{ e.preventDefault(); onUpdateAltar({nameColor:c}); }}
+                  <div key={c} onClick={()=>onUpdateAltar({nameColor:c})}
                     style={{ width:24,height:24,borderRadius:"50%",background:c,
                       border:`2px solid ${altar.nameColor===c?"#e879f9":"rgba(255,255,255,0.15)"}`,
                       cursor:"pointer",flexShrink:0,
