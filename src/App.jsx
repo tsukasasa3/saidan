@@ -190,7 +190,7 @@ async function getMyMaterials(creatorId) {
 async function getApprovedMaterials() {
   try {
     return await sbFetch(`/rest/v1/creator_materials?status=eq.approved&select=*,creator_profiles(display_name),material_items(*)&order=approved_at.desc`) || [];
-  } catch(e) { console.error("getApprovedMaterials error:", e); return []; }
+  } catch { return []; }
 }
 
 async function getMyPurchases(userId) {
