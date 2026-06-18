@@ -742,15 +742,22 @@ export default function App() {
           setSession(sess);
           setShowAuth(false);
           showToast("データを同期中…");
+          // 別アカウントのデータが残らないよう先にリセット
+          const freshAltar = makeAltar();
+          setAltars([freshAltar]);
+          setActiveAltarId(freshAltar.id);
+          setGoods([]);
+          setCharacters([]);
+          setPlan(PLAN_FREE);
+          setPurchasedMaterials([]);
+          setRandomSets([]);
           try {
             const cloudData = await loadFromCloud(sess.user.id);
             if (cloudData) {
               applyData(cloudData);
               showToast("✓ クラウドのデータを読み込みました");
             } else {
-              // 初回ログイン：ローカルデータをクラウドに保存
-              const data = {plan,altars,activeAltarId:altars[0]?.id,goods,characters,purchasedMaterials,randomSets};
-              await saveToCloud(sess.user.id, data);
+              // 新規アカウント：フレッシュな状態で開始
               showToast("✓ ログインしました");
             }
           } catch(e) {
