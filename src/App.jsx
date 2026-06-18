@@ -363,7 +363,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, bgCustomImage:null, frameMaterialId:null, frameCustomColor:null, frameCustomImage:null, lightId:null };
+  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, nameColor:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, bgCustomImage:null, frameMaterialId:null, frameCustomColor:null, frameCustomImage:null, lightId:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -732,6 +732,8 @@ export default function App() {
 
       {showAdd && <AddModal onClose={()=>setShowAdd(false)} onAdd={addGood} characters={characters} isPro={isPro} />}
       {showTemplates && <TemplateModal current={currentAltar.templateId} customColors={currentAltar.customColors}
+        nameColor={currentAltar.nameColor}
+        onNameColorChange={(c)=>updateAltar(currentAltar.id,{nameColor:c})}
         onSelect={(tid,cc)=>{ updateAltar(currentAltar.id,{templateId:tid,...(cc!==undefined?{customColors:cc}:{})}); setShowTemplates(false); showToast("テンプレートを更新しました ✓"); }}
         onClose={()=>setShowTemplates(false)} />}
       {showShare && <ShareModal altar={currentAltar} template={currentTemplate} goodById={goodById} goods={goods} onClose={()=>setShowShare(false)} />}
@@ -1787,7 +1789,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           </div>
         ):(
           <div style={{ display:"flex",alignItems:"center",gap:8,cursor:viewingShared?"default":"pointer" }} onClick={()=>!viewingShared&&(setNameInput(altar.name),setEditingName(true),setTimeout(()=>nameRef.current?.focus(),30))}>
-            <span style={{ fontSize:20,fontWeight:900,color:isDark?"#f0e8ff":"#1a0030",borderBottom:viewingShared?"none":"2px dashed rgba(232,121,249,0.3)",paddingBottom:2 }}>{altar.name}</span>
+            <span style={{ fontSize:20,fontWeight:900,color:altar.nameColor||(isDark?"#f0e8ff":"#1a0030"),borderBottom:viewingShared?"none":"2px dashed rgba(232,121,249,0.3)",paddingBottom:2 }}>{altar.name}</span>
             {!viewingShared&&<span style={{ fontSize:11,color:"#7c6a9a",background:"rgba(232,121,249,0.1)",padding:"2px 8px",borderRadius:10,border:"1px solid rgba(232,121,249,0.2)" }}>✏ 編集</span>}
           </div>
         )}
@@ -1816,7 +1818,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
-          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
           {/* Deco stickers on shelf */}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
@@ -1869,7 +1871,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
           {/* Hina pyramid */}
           <HinaStage
             hinaShelf={hinaShelf} template={template} goodById={goodById}
@@ -1895,7 +1897,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
           <ShowcaseStage
             showcaseShelf={showcaseShelf} template={template} goodById={goodById}
             isDark={isDark} viewingShared={viewingShared}
@@ -1920,7 +1922,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
             draggingDeco={draggingDeco} selectedDeco={selectedDeco}
             onStartDrag={startDecoDrag} onSelect={setSelectedDeco}
             onScale={scaleDecoItem} onRotate={rotateDecoItem} onUpdate={updateDecoItem} onRemove={removeDecoItem} onEndDrag={endDecoDrag} freeRef={freeRef}/>
-          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
           <FlatStage
             flatShelf={flatShelf} template={template} goodById={goodById}
             isDark={isDark} viewingShared={viewingShared}
@@ -1940,7 +1942,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
       {/* Free mode */}
       {altarMode==="free"&&(
         <div ref={freeRef} onClick={()=>setSelectedFree(null)} style={{ ...S.altarBg,background:altar.bgCustomColor||(altar.bgMaterialId&&MATERIALS.find(m=>m.id===altar.bgMaterialId)?.bg)||template.bg,border:`1px solid ${template.border}`,height:380,position:"relative",overflow:"hidden",cursor:draggingFree?"grabbing":"default",marginBottom:16 }}>
-          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor}/>
+          <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
@@ -1994,9 +1996,10 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
   );
 }
 
-function AltarTopBar({ template, altarName, hideEmojiDecor }) {
+function AltarTopBar({ template, altarName, hideEmojiDecor, nameColor }) {
+  const color = nameColor || template.accent;
   return (
-    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"10px 20px",borderBottom:`1px solid ${template.border}`,color:template.accent,background:`${template.accent}08`,fontSize:14 }}>
+    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"10px 20px",borderBottom:`1px solid ${template.border}`,color,background:`${color}08`,fontSize:14 }}>
       {!hideEmojiDecor && <span>{template.emoji}</span>}
       <span style={{ fontSize:13,fontWeight:700,letterSpacing:2 }}>{altarName}</span>
       {!hideEmojiDecor && <span>{template.emoji}</span>}
@@ -2827,7 +2830,9 @@ function UpgradeModal({ onUpgrade, onClose, plan }) {
 }
 
 // ─── Template Modal ───────────────────────────────────────────
-function TemplateModal({ current, customColors, onSelect, onClose }) {
+function TemplateModal({ current, customColors, nameColor, onNameColorChange, onSelect, onClose }) {
+  const NAME_PRESETS = ["#f0e8ff","#ffffff","#e879f9","#818cf8","#4ade80","#fbbf24","#f87171","#38bdf8","#fb923c","#f472b6","#a78bfa","#000000"];
+  const [nameColorInput, setNameColorInput] = useState(nameColor||"#f0e8ff");
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal,maxWidth:500 }} onClick={e=>e.stopPropagation()}>
@@ -2854,6 +2859,39 @@ function TemplateModal({ current, customColors, onSelect, onClose }) {
             );
           })}
         </div>
+        {/* 名前の色 */}
+        <div style={{ marginTop:14, background:"rgba(255,255,255,0.03)", border:`1px solid ${nameColor?"rgba(232,121,249,0.4)":"rgba(255,255,255,0.08)"}`, borderRadius:12, padding:"12px 14px" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10 }}>
+            <span style={{ fontSize:13,fontWeight:700,color:nameColor?"#e879f9":"#f0e8ff" }}>✏ 名前の文字色</span>
+            {nameColor&&<button onClick={()=>{ onNameColorChange(null); setNameColorInput("#f0e8ff"); }}
+              style={{ marginLeft:"auto",fontSize:10,color:"#9ca3af",background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,padding:"2px 8px",cursor:"pointer" }}>✕ デフォルトに戻す</button>}
+          </div>
+          {/* プリセット */}
+          <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:10 }}>
+            {NAME_PRESETS.map(c=>(
+              <button key={c} onClick={()=>{ setNameColorInput(c); onNameColorChange(c); }}
+                style={{ width:28,height:28,borderRadius:8,background:c,border:`2px solid ${(nameColor||"#f0e8ff")===c?"#e879f9":"rgba(255,255,255,0.15)"}`,cursor:"pointer",flexShrink:0,transition:"transform 0.1s" }}
+                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.15)"}
+                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}/>
+            ))}
+          </div>
+          {/* カスタムカラー */}
+          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+            <input type="color" value={nameColorInput}
+              onChange={e=>{ setNameColorInput(e.target.value); onNameColorChange(e.target.value); }}
+              style={{ width:36,height:36,border:"none",borderRadius:8,cursor:"pointer",padding:2,background:"transparent",flexShrink:0 }}/>
+            <input type="text" value={nameColorInput} maxLength={7}
+              onChange={e=>{ setNameColorInput(e.target.value); if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onNameColorChange(e.target.value); }}
+              placeholder="#f0e8ff"
+              style={{ ...S.input,flex:1,padding:"7px 10px",fontSize:13,fontFamily:"monospace" }}/>
+            <div style={{ width:36,height:36,borderRadius:8,background:nameColorInput,border:"1px solid rgba(255,255,255,0.15)",flexShrink:0 }}/>
+          </div>
+          {/* プレビュー */}
+          <div style={{ marginTop:10,textAlign:"center",fontSize:16,fontWeight:900,letterSpacing:2,color:nameColor||"#f0e8ff",background:"rgba(0,0,0,0.3)",borderRadius:8,padding:"8px 0" }}>
+            祭壇の名前
+          </div>
+        </div>
+
         <div style={{ marginTop:12,padding:"8px 12px",background:"rgba(129,140,248,0.06)",border:"1px solid rgba(129,140,248,0.15)",borderRadius:10,fontSize:11,color:"#a5b4fc",lineHeight:1.6 }}>
           💡 背景の色やアクセントカラーを細かく変えたい場合は <strong style={{ color:"#818cf8" }}>🌌 背景 → ✏ カスタム</strong> から設定できます
         </div>
