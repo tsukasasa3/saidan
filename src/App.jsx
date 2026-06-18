@@ -4205,10 +4205,22 @@ function AdminPanel({ onClose, showToast, onApproved }) {
 
 // ─── MarketPage ───────────────────────────────────────────────
 function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePurchase, onPaidPurchase, onOpenCreatorHub }) {
-  const [filter, setFilter] = useState("all");
-  const filtered = filter==="all" ? materials : materials.filter(m=>m.type===filter);
+  const [filter, setFilter]   = useState("all");
+  const [query, setQuery]     = useState("");
   const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
   const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック", light:"ライト" };
+
+  const filtered = materials.filter(m => {
+    if (filter !== "all" && m.type !== filter) return false;
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      const inName    = m.name?.toLowerCase().includes(q);
+      const inCreator = m.creator_profiles?.display_name?.toLowerCase().includes(q);
+      const inDesc    = m.description?.toLowerCase().includes(q);
+      if (!inName && !inCreator && !inDesc) return false;
+    }
+    return true;
+  });
 
   return (
     <div style={{ padding:"16px 16px 120px", maxWidth:480, margin:"0 auto" }}>
@@ -4216,8 +4228,22 @@ function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePur
       <div style={{ marginBottom:6 }}>
         <div style={{ fontSize:18, fontWeight:800, color:"#e879f9" }}>🛍 マーケット</div>
       </div>
-      <div style={{ fontSize:12, color:"#7c6a9a", marginBottom:16 }}>
+      <div style={{ fontSize:12, color:"#7c6a9a", marginBottom:12 }}>
         クリエイターが作ったデコ素材をゲットしよう
+      </div>
+
+      {/* 検索バー */}
+      <div style={{ position:"relative", marginBottom:12 }}>
+        <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:14, pointerEvents:"none" }}>🔍</span>
+        <input
+          value={query}
+          onChange={e=>setQuery(e.target.value)}
+          placeholder="素材名・クリエイター名で検索"
+          style={{ width:"100%", boxSizing:"border-box", padding:"10px 36px 10px 34px", borderRadius:20, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.06)", color:"#f0e8ff", fontSize:13, outline:"none" }}
+        />
+        {query && (
+          <button onClick={()=>setQuery("")} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#6b7280", fontSize:16, cursor:"pointer", padding:2, lineHeight:1 }}>×</button>
+        )}
       </div>
 
       {/* フィルター */}
@@ -4227,12 +4253,19 @@ function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePur
         ))}
       </div>
 
+      {/* 件数表示 */}
+      {query.trim() && (
+        <div style={{ fontSize:11, color:"#6b7280", marginBottom:10 }}>
+          {filtered.length > 0 ? `${filtered.length}件 見つかりました` : ""}
+        </div>
+      )}
+
       {/* グリッド */}
       {filtered.length===0 ? (
         <div style={{ textAlign:"center", padding:"60px 0", color:"#4b5563" }}>
-          <div style={{ fontSize:40, marginBottom:12 }}>🎁</div>
-          <div style={{ fontSize:14 }}>まだ素材がありません</div>
-          <div style={{ fontSize:12, marginTop:4, color:"#374151" }}>クリエイターとして最初の素材を投稿しよう！</div>
+          <div style={{ fontSize:40, marginBottom:12 }}>{query.trim() ? "🔍" : "🎁"}</div>
+          <div style={{ fontSize:14 }}>{query.trim() ? `「${query}」に一致する素材がありません` : "まだ素材がありません"}</div>
+          {!query.trim() && <div style={{ fontSize:12, marginTop:4, color:"#374151" }}>クリエイターとして最初の素材を投稿しよう！</div>}
         </div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
