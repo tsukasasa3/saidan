@@ -54,12 +54,40 @@ async function signUp(email, password) {
 }
 
 // JWTのペイロードからuserオブジェクトを復元（Supabaseがuserを返さない場合の保険）
+// base64url → base64 変換も行う
 function userFromJwt(access_token) {
   try {
-    const payload = JSON.parse(atob(access_token.split(".")[1]));
+    const part = access_token.split(".")[1];
+    // base64url → 標準base64
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - b64.length % 4) % 4);
+    const payload = JSON.parse(atob(padded));
     if (!payload?.sub) return null;
     return { id: payload.sub, email: payload.email || "" };
   } catch { return null; }
+}
+
+// Supabase APIでユーザー情報を取得（JWTデコードが失敗した場合のフォールバック）
+async function fetchUserInfo(access_token) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { "apikey": SUPABASE_ANON, "Authorization": `Bearer ${access_token}` }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// セッションにuserが欠けている場合に補完する
+async function ensureUserInSession(data) {
+  if (data.user?.id) return data; // 既にある
+  // 1. JWTから試みる
+  const fromJwt = userFromJwt(data.access_token);
+  if (fromJwt?.id) return { ...data, user: fromJwt };
+  // 2. Supabase APIから取得
+  const fromApi = await fetchUserInfo(data.access_token);
+  if (fromApi?.id) return { ...data, user: fromApi };
+  return data; // どちらもダメならそのまま
 }
 
 async function signIn(email, password) {
@@ -69,10 +97,10 @@ async function signIn(email, password) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message||data.error);
-  // userフィールドがない場合はJWTから補完
-  if (!data.user && data.access_token) data.user = userFromJwt(data.access_token);
-  localStorage.setItem("saidan_session", JSON.stringify(data));
-  return data;
+  // userフィールドがない場合はJWT→APIの順で補完
+  const session = await ensureUserInSession(data);
+  localStorage.setItem("saidan_session", JSON.stringify(session));
+  return session;
 }
 
 async function requestPasswordReset(email) {
@@ -775,18 +803,22 @@ export default function App() {
           setPlan(PLAN_FREE);
           setPurchasedMaterials([]);
           setRandomSets([]);
-          try {
-            const cloudData = await loadFromCloud(sess.user.id);
-            if (cloudData) {
-              applyData(cloudData);
-              showToast("✓ クラウドのデータを読み込みました");
-            } else {
-              // 新規アカウント：フレッシュな状態で開始
-              showToast("✓ ログインしました");
+          const userId = sess?.user?.id;
+          if (userId) {
+            try {
+              const cloudData = await loadFromCloud(userId);
+              if (cloudData) {
+                applyData(cloudData);
+                showToast("✓ クラウドのデータを読み込みました");
+              } else {
+                showToast("✓ ログインしました");
+              }
+            } catch(e) {
+              console.error("Cloud sync error:", e);
+              showToast("同期エラー: " + (e?.message||String(e)));
             }
-          } catch(e) {
-            console.error("Cloud sync error:", e);
-            showToast("同期エラー: " + (e?.message||String(e)));
+          } else {
+            showToast("✓ ログインしました");
           }
         }}
         onLogout={async()=>{
