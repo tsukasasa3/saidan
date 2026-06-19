@@ -555,7 +555,11 @@ export default function App() {
       setMyPurchaseIds(prev => prev.includes(purchasedId) ? prev : [...prev, purchasedId]);
       showToast("🎉 購入完了！素材を追加しました");
       // DB反映を待って再取得（既存のIDと合流させる）
-      setTimeout(()=>{ if (session?.user?.id) getMyPurchases(session.user.id).then(ids => setMyPurchaseIds(prev => [...new Set([...prev, ...ids])])); }, 3000);
+      setTimeout(()=>{
+        const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
+        const uid = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+        if (uid) getMyPurchases(uid).then(ids => setMyPurchaseIds(prev => [...new Set([...prev, ...ids])]));
+      }, 4000);
     }
     const goMarket = params.get("page");
     if (goMarket === "market") { window.history.replaceState({}, "", "/"); setPage("market"); }
