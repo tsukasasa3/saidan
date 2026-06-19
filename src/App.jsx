@@ -17,8 +17,9 @@ async function refreshSession() {
     });
     const data = await res.json();
     if (data.error || !data.access_token) return null;
-    // リフレッシュレスポンスにuserが含まれない場合、旧セッションのuserを引き継ぐ
-    const merged = { ...data, user: data.user || session.user };
+    // userフィールドがない場合：旧セッション→JWTの順で補完
+    const user = data.user || session.user || userFromJwt(data.access_token);
+    const merged = { ...data, user };
     localStorage.setItem("saidan_session", JSON.stringify(merged));
     return merged;
   } catch { return null; }
@@ -52,6 +53,15 @@ async function signUp(email, password) {
   return data;
 }
 
+// JWTのペイロードからuserオブジェクトを復元（Supabaseがuserを返さない場合の保険）
+function userFromJwt(access_token) {
+  try {
+    const payload = JSON.parse(atob(access_token.split(".")[1]));
+    if (!payload?.sub) return null;
+    return { id: payload.sub, email: payload.email || "" };
+  } catch { return null; }
+}
+
 async function signIn(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method:"POST", headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON},
@@ -59,6 +69,8 @@ async function signIn(email, password) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message||data.error);
+  // userフィールドがない場合はJWTから補完
+  if (!data.user && data.access_token) data.user = userFromJwt(data.access_token);
   localStorage.setItem("saidan_session", JSON.stringify(data));
   return data;
 }
@@ -92,7 +104,14 @@ async function signOut() {
 }
 
 function getSession() {
-  return JSON.parse(localStorage.getItem("saidan_session")||"null");
+  const s = JSON.parse(localStorage.getItem("saidan_session")||"null");
+  if (!s) return null;
+  // userフィールドがない場合はJWTから補完して保存
+  if (!s.user && s.access_token) {
+    s.user = userFromJwt(s.access_token);
+    if (s.user) localStorage.setItem("saidan_session", JSON.stringify(s));
+  }
+  return s;
 }
 
 // Save user data to Supabase
