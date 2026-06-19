@@ -708,7 +708,17 @@ export default function App() {
             creatorProfile={creatorProfile}
             onFreePurchase={async(materialId)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
-              const userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+              // access_tokenがあれば未ログインではない→APIで確実に取得
+              if (!userId && rawSess?.access_token) {
+                const u = await fetchUserInfo(rawSess.access_token);
+                if (u?.id) {
+                  userId = u.id;
+                  const updated = { ...rawSess, user: u };
+                  localStorage.setItem("saidan_session", JSON.stringify(updated));
+                  setSession(updated);
+                }
+              }
               if (!userId) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
               try {
                 await recordFreePurchase(userId, materialId);
@@ -718,8 +728,18 @@ export default function App() {
             }}
             onPaidPurchase={async(material)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
-              const userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
-              console.log("[onPaidPurchase] material=", material, "userId=", userId, "session.user=", session?.user, "rawSess.user=", rawSess?.user);
+              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+              // access_tokenがあれば未ログインではない→APIで確実に取得
+              if (!userId && rawSess?.access_token) {
+                const u = await fetchUserInfo(rawSess.access_token);
+                if (u?.id) {
+                  userId = u.id;
+                  const updated = { ...rawSess, user: u };
+                  localStorage.setItem("saidan_session", JSON.stringify(updated));
+                  setSession(updated);
+                }
+              }
+              console.log("[onPaidPurchase] userId=", userId, "material=", material);
               if (!userId) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
               if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
               try {
