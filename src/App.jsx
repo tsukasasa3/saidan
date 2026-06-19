@@ -96,13 +96,19 @@ async function signIn(email, password) {
     body: JSON.stringify({email,password})
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message||data.error);
-  // デバッグ: Supabaseレスポンスのキーを確認
-  if (!data.access_token) {
-    throw new Error(`[DEBUG] access_token missing! keys=${Object.keys(data).join(",")}`);
+  if (data.error) throw new Error(data.error.message||data.error_description||data.error);
+  // access_tokenが data 直下にある場合と data.session 以下にある場合の両方に対応
+  const flat = data.access_token
+    ? data
+    : data.session?.access_token
+      ? { ...data, ...data.session }
+      : data;
+  if (!flat.access_token) {
+    // まだない→レスポンス構造をそのままエラーで表示してデバッグ
+    throw new Error(`[DEBUG] keys=${Object.keys(data).join(",")} session_keys=${data.session ? Object.keys(data.session).join(",") : "none"}`);
   }
   // userフィールドがない場合はJWT→APIの順で補完
-  const session = await ensureUserInSession(data);
+  const session = await ensureUserInSession(flat);
   localStorage.setItem("saidan_session", JSON.stringify(session));
   return session;
 }
