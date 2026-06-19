@@ -49,7 +49,7 @@ async function signUp(email, password) {
     body: JSON.stringify({email,password})
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message||data.error);
+  if (data.error || data.msg || data.error_code) throw new Error(data.error_description||data.msg||data.error?.message||data.error||"登録に失敗しました");
   return data;
 }
 
@@ -96,7 +96,10 @@ async function signIn(email, password) {
     body: JSON.stringify({email,password})
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message||data.error_description||data.error);
+  // Supabase GoTrueのエラー形式は複数ある（古: {error,error_description} 新: {code,error_code,msg}）
+  if (data.error || data.msg || data.error_code) {
+    throw new Error(data.error_description || data.msg || data.error?.message || data.error || "ログインに失敗しました");
+  }
   // access_tokenが data 直下にある場合と data.session 以下にある場合の両方に対応
   const flat = data.access_token
     ? data
@@ -104,8 +107,7 @@ async function signIn(email, password) {
       ? { ...data, ...data.session }
       : data;
   if (!flat.access_token) {
-    // まだない→レスポンス構造をそのままエラーで表示してデバッグ
-    throw new Error(`[DEBUG] keys=${Object.keys(data).join(",")} session_keys=${data.session ? Object.keys(data.session).join(",") : "none"}`);
+    throw new Error("ログインに失敗しました（サーバーエラー）。時間をおいて再試行してください。");
   }
   // userフィールドがない場合はJWT→APIの順で補完
   const session = await ensureUserInSession(flat);
