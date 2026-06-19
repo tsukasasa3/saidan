@@ -138,8 +138,13 @@ async function signOut() {
 function getSession() {
   const s = JSON.parse(localStorage.getItem("saidan_session")||"null");
   if (!s) return null;
+  // access_tokenがないセッションは無効（古い形式 or 破損）→削除して再ログインを促す
+  if (!s.access_token) {
+    localStorage.removeItem("saidan_session");
+    return null;
+  }
   // userフィールドがない場合はJWTから補完して保存
-  if (!s.user && s.access_token) {
+  if (!s.user) {
     s.user = userFromJwt(s.access_token);
     if (s.user) localStorage.setItem("saidan_session", JSON.stringify(s));
   }
@@ -735,9 +740,6 @@ export default function App() {
             onPaidPurchase={async(material)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
               const accessToken = session?.access_token || rawSess?.access_token;
-              // デバッグ用トースト（後で削除）
-              showToast(`[DEBUG] sess:${!!session} sAT:${!!session?.access_token} rAT:${!!rawSess?.access_token}`);
-              await new Promise(r=>setTimeout(r,2500));
               // access_tokenがない＝本当に未ログイン
               if (!accessToken) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
               if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
@@ -817,8 +819,6 @@ export default function App() {
         mode={showAuth}
         session={session}
         onLogin={async(sess)=>{
-          showToast(`[LOGIN] AT:${!!sess?.access_token} uid:${sess?.user?.id||"none"}`);
-          await new Promise(r=>setTimeout(r,2500));
           setSession(sess);
           setShowAuth(false);
           showToast("データを同期中…");
