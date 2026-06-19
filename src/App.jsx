@@ -707,23 +707,27 @@ export default function App() {
             session={session}
             creatorProfile={creatorProfile}
             onFreePurchase={async(materialId)=>{
-              if (!session?.user?.id) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
+              const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
+              const userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+              if (!userId) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
               try {
-                await recordFreePurchase(session.user.id, materialId);
+                await recordFreePurchase(userId, materialId);
                 setMyPurchaseIds(prev=>[...prev, materialId]);
                 showToast("素材を追加しました ✓");
               } catch(e) { console.error("[onFreePurchase]", e); showToast("エラー: "+(e?.message||String(e))); }
             }}
             onPaidPurchase={async(material)=>{
-              console.log("[onPaidPurchase] material=", material, "session.user=", session?.user);
-              if (!session?.user?.id) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
+              const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
+              const userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
+              console.log("[onPaidPurchase] material=", material, "userId=", userId, "session.user=", session?.user, "rawSess.user=", rawSess?.user);
+              if (!userId) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
               if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
               try {
                 showToast("決済ページに移動中…");
                 const res = await fetch("/api/create-checkout-session", {
                   method:"POST",
                   headers:{"Content-Type":"application/json"},
-                  body:JSON.stringify({ materialId:material.id, materialName:material.name, price:material.price, userId:session.user.id })
+                  body:JSON.stringify({ materialId:material.id, materialName:material.name, price:material.price, userId })
                 });
                 const data = await res.json();
                 if (data.url) window.location.href = data.url;
