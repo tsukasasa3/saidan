@@ -1,10 +1,30 @@
 import Stripe from "stripe";
 
+// JWTのペイロードをデコードしてsubを取得（署名検証なし）
+function userIdFromJwt(token) {
+  try {
+    const part = token.split(".")[1];
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - b64.length % 4) % 4);
+    const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    return payload?.sub || null;
+  } catch { return null; }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { materialId, materialName, price, userId } = req.body;
-  if (!materialId || !price || !userId) {
+  const { materialId, materialName, price, userId, accessToken } = req.body;
+
+  // userIdの解決: クライアントから来た値 → JWTデコード の順で試みる
+  let resolvedUserId = userId || null;
+  if (!resolvedUserId && accessToken) {
+    resolvedUserId = userIdFromJwt(accessToken);
+    console.log("[checkout] resolved userId from JWT:", resolvedUserId);
+  }
+
+  if (!materialId || !price || !resolvedUserId) {
+    console.error("[checkout] Missing fields:", { materialId, price, resolvedUserId, hasAccessToken: !!accessToken });
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -22,13 +42,13 @@ export default async function handler(req, res) {
               name: materialName || "SAIDAN素材",
               description: "SAIDANクリエイター素材",
             },
-            unit_amount: price, // JPYは整数（cents不要）
+            unit_amount: price,
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      metadata: { materialId, userId },
+      metadata: { materialId, userId: resolvedUserId },
       success_url: `${origin}/?payment_success=${materialId}`,
       cancel_url:  `${origin}/?page=market`,
     });

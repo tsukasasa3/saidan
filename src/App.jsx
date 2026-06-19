@@ -708,18 +708,20 @@ export default function App() {
             creatorProfile={creatorProfile}
             onFreePurchase={async(materialId)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
-              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
-              // access_tokenがあれば未ログインではない→APIで確実に取得
-              if (!userId && rawSess?.access_token) {
-                const u = await fetchUserInfo(rawSess.access_token);
-                if (u?.id) {
-                  userId = u.id;
-                  const updated = { ...rawSess, user: u };
+              const accessToken = session?.access_token || rawSess?.access_token;
+              // access_tokenがない＝本当に未ログイン
+              if (!accessToken) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
+              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(accessToken)?.id;
+              if (!userId) {
+                const u = await fetchUserInfo(accessToken);
+                userId = u?.id;
+                if (userId) {
+                  const updated = { ...(rawSess||{}), access_token:accessToken, user: u };
                   localStorage.setItem("saidan_session", JSON.stringify(updated));
                   setSession(updated);
                 }
               }
-              if (!userId) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
+              if (!userId) { showToast("エラー: ユーザー情報を取得できませんでした。再ログインしてください"); return; }
               try {
                 await recordFreePurchase(userId, materialId);
                 setMyPurchaseIds(prev=>[...prev, materialId]);
@@ -728,26 +730,19 @@ export default function App() {
             }}
             onPaidPurchase={async(material)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
-              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(rawSess?.access_token)?.id;
-              // access_tokenがあれば未ログインではない→APIで確実に取得
-              if (!userId && rawSess?.access_token) {
-                const u = await fetchUserInfo(rawSess.access_token);
-                if (u?.id) {
-                  userId = u.id;
-                  const updated = { ...rawSess, user: u };
-                  localStorage.setItem("saidan_session", JSON.stringify(updated));
-                  setSession(updated);
-                }
-              }
-              console.log("[onPaidPurchase] userId=", userId, "material=", material);
-              if (!userId) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
+              const accessToken = session?.access_token || rawSess?.access_token;
+              // access_tokenがない＝本当に未ログイン
+              if (!accessToken) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
               if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
+              let userId = session?.user?.id || rawSess?.user?.id || userFromJwt(accessToken)?.id;
+              console.log("[onPaidPurchase] accessToken=", !!accessToken, "userId=", userId, "material=", material?.id);
               try {
                 showToast("決済ページに移動中…");
+                // userIdが取れなくてもaccessTokenをサーバーに送ればサーバー側でJWT解析してくれる
                 const res = await fetch("/api/create-checkout-session", {
                   method:"POST",
                   headers:{"Content-Type":"application/json"},
-                  body:JSON.stringify({ materialId:material.id, materialName:material.name, price:material.price, userId })
+                  body:JSON.stringify({ materialId:material.id, materialName:material.name, price:material.price, userId, accessToken })
                 });
                 const data = await res.json();
                 if (data.url) window.location.href = data.url;
