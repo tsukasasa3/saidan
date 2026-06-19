@@ -731,6 +731,9 @@ export default function App() {
             onPaidPurchase={async(material)=>{
               const rawSess = JSON.parse(localStorage.getItem("saidan_session")||"null");
               const accessToken = session?.access_token || rawSess?.access_token;
+              // デバッグ用トースト（後で削除）
+              showToast(`[DEBUG] sess:${!!session} sAT:${!!session?.access_token} rAT:${!!rawSess?.access_token}`);
+              await new Promise(r=>setTimeout(r,2500));
               // access_tokenがない＝本当に未ログイン
               if (!accessToken) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
               if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
