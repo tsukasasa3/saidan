@@ -97,6 +97,10 @@ async function signIn(email, password) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message||data.error);
+  // デバッグ: Supabaseレスポンスのキーを確認
+  if (!data.access_token) {
+    throw new Error(`[DEBUG] access_token missing! keys=${Object.keys(data).join(",")}`);
+  }
   // userフィールドがない場合はJWT→APIの順で補完
   const session = await ensureUserInSession(data);
   localStorage.setItem("saidan_session", JSON.stringify(session));
