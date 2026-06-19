@@ -17,8 +17,10 @@ async function refreshSession() {
     });
     const data = await res.json();
     if (data.error || !data.access_token) return null;
-    localStorage.setItem("saidan_session", JSON.stringify(data));
-    return data;
+    // リフレッシュレスポンスにuserが含まれない場合、旧セッションのuserを引き継ぐ
+    const merged = { ...data, user: data.user || session.user };
+    localStorage.setItem("saidan_session", JSON.stringify(merged));
+    return merged;
   } catch { return null; }
 }
 
@@ -165,12 +167,13 @@ async function registerCreator(userId, displayName, bio) {
 }
 
 async function submitMaterial(data) {
-  const rows = await sbFetch("/rest/v1/creator_materials", {
+  const id = crypto.randomUUID();
+  await sbFetch("/rest/v1/creator_materials", {
     method:"POST",
-    headers:{"Prefer":"return=representation"},
-    body:JSON.stringify(data)
+    headers:{"Prefer":"return=minimal"},
+    body:JSON.stringify({ id, ...data })
   });
-  return rows?.[0];
+  return { id };
 }
 
 async function addMaterialItem(materialId, itemName, fileUrl, sortOrder) {
@@ -612,7 +615,7 @@ export default function App() {
             {isPro?"👑":"FREE"}
           </button>
           {/* Cloud sync button (logged in only) */}
-          {session && <button onClick={async()=>{
+          {session?.user?.id && <button onClick={async()=>{
             showToast("☁ 同期中…");
             try {
               const cloudData = await loadFromCloud(session.user.id);
@@ -657,15 +660,17 @@ export default function App() {
             session={session}
             creatorProfile={creatorProfile}
             onFreePurchase={async(materialId)=>{
-              if (!session) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
+              if (!session?.user?.id) { setShowAuth("login"); showToast("ログインして素材を追加しよう"); return; }
               try {
                 await recordFreePurchase(session.user.id, materialId);
                 setMyPurchaseIds(prev=>[...prev, materialId]);
                 showToast("素材を追加しました ✓");
-              } catch(e) { showToast("エラー: "+(e?.message||String(e))); }
+              } catch(e) { console.error("[onFreePurchase]", e); showToast("エラー: "+(e?.message||String(e))); }
             }}
             onPaidPurchase={async(material)=>{
-              if (!session) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
+              console.log("[onPaidPurchase] material=", material, "session.user=", session?.user);
+              if (!session?.user?.id) { setShowAuth("login"); showToast("ログインして購入しよう"); return; }
+              if (!material?.id) { showToast("エラー: 素材情報が見つかりません（再読み込みしてください）"); return; }
               try {
                 showToast("決済ページに移動中…");
                 const res = await fetch("/api/create-checkout-session", {
@@ -676,7 +681,7 @@ export default function App() {
                 const data = await res.json();
                 if (data.url) window.location.href = data.url;
                 else showToast("エラー: "+(data.error||"決済の開始に失敗しました"));
-              } catch(e) { showToast("エラー: "+(e?.message||String(e))); }
+              } catch(e) { console.error("[onPaidPurchase]", e); showToast("エラー: "+(e?.message||String(e))); }
             }}
             onOpenCreatorHub={()=>setShowCreatorHub(true)}
           />
@@ -799,6 +804,7 @@ export default function App() {
         session={session}
         creatorProfile={creatorProfile}
         onRegister={async(displayName, bio)=>{
+          if (!session?.user?.id) throw new Error("セッションエラー。一度ログアウトして再ログインしてください。");
           await registerCreator(session.user.id, displayName, bio);
           const profile = await getCreatorProfile(session.user.id);
           setCreatorProfile(profile);
@@ -4168,47 +4174,66 @@ function TermsModal({ onClose }) {
   const P = ({children})=><p style={{ fontSize:12,color:"#d1d5db",lineHeight:1.8,marginBottom:4 }}>{children}</p>;
   return (
     <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
-      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 0",display:"flex",flexDirection:"column" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexShrink:0 }}>
           <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>📜 利用規約</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ fontSize:10,color:"#6b7280",marginBottom:16 }}>最終更新日：2026年5月30日</div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:12,flexShrink:0 }}>最終更新日：2026年6月18日</div>
+        <div style={{ overflowY:"auto",flex:1,paddingBottom:28 }}>
 
         <H>第1条（サービスの内容）</H>
-        <P>本規約は、SAIDAN（以下「本サービス」）の利用条件を定めるものです。本サービスは、推しグッズのコレクション管理・祭壇作成ができるウェブアプリケーションです。</P>
+        <P>本規約は、SAIDAN（以下「本サービス」）の利用条件を定めるものです。本サービスは、推しグッズのコレクション管理・祭壇作成ができるウェブアプリケーションです。また、クリエイターが制作したデジタル素材を販売・購入できるマーケットプレイス機能を提供します。</P>
 
         <H>第2条（利用資格）</H>
-        <P>本サービスは13歳以上の方が利用できます。13歳未満の方のご利用はお断りします。</P>
+        <P>本サービスは13歳以上の方が利用できます。有料コンテンツの購入にはクレジットカードが必要なため、18歳未満の方は保護者の同意のもとご利用ください。13歳未満の方のご利用はお断りします。</P>
 
         <H>第3条（アカウント）</H>
         <P>1. ユーザーはメールアドレスとパスワードでアカウントを作成できます。</P>
         <P>2. アカウント情報の管理はユーザーの責任です。</P>
         <P>3. 不正利用が確認された場合、予告なくアカウントを削除する場合があります。</P>
+        <P>4. アカウントの譲渡・共有は禁止します。</P>
 
         <H>第4条（ユーザーコンテンツ）</H>
-        <P>1. ユーザーが投稿した画像・データの著作権はユーザーに帰属します。</P>
+        <P>1. ユーザーが投稿・アップロードした画像・データの著作権はユーザーに帰属します。</P>
         <P>2. ユーザーは本サービスの運営に必要な範囲でのデータ利用を許諾するものとします。</P>
-        <P>3. 第三者の著作権・肖像権を侵害するコンテンツの投稿は禁止します。</P>
+        <P>3. 第三者の著作権・肖像権・商標権を侵害するコンテンツの投稿は禁止します。</P>
+        <P>4. 運営は違法コンテンツと判断した場合、予告なく削除できるものとします。</P>
 
-        <H>第5条（禁止事項）</H>
+        <H>第5条（マーケットプレイス）</H>
+        <P>1. クリエイターとして素材を販売するには、運営の審査・承認が必要です。</P>
+        <P>2. 販売素材の著作権はクリエイターに帰属します。購入者はサービス内での個人利用に限り使用できます。</P>
+        <P>3. 購入した素材の再配布・転売・商業利用は禁止します。</P>
+        <P>4. クリエイターへの収益は売上の80%を原則とし、残り20%はサービス運営費として徴収します。</P>
+        <P>5. デジタルコンテンツの性質上、購入完了後の返品・返金は原則お受けできません。</P>
+
+        <H>第6条（決済）</H>
+        <P>1. 有料コンテンツの決済はStripe（Stripe, Inc.）を通じて行われます。</P>
+        <P>2. クレジットカード情報はStripeが管理し、本サービスには一切渡りません。</P>
+        <P>3. 決済に関するトラブルはStripeのサポートをご利用ください。</P>
+
+        <H>第7条（禁止事項）</H>
         <P>・法令または公序良俗に反する行為</P>
         <P>・第三者の権利を侵害する行為</P>
-        <P>・本サービスの運営を妨げる行為</P>
-        <P>・商業目的での無断利用</P>
+        <P>・本サービスの運営を妨げる行為（不正アクセス・スクレイピング等）</P>
+        <P>・虚偽の情報登録</P>
+        <P>・購入素材の無断転載・再配布・商業利用</P>
+        <P>・その他運営が不適切と判断する行為</P>
 
-        <H>第6条（サービスの変更・停止）</H>
+        <H>第8条（サービスの変更・停止）</H>
         <P>本サービスは予告なく内容の変更・停止・終了する場合があります。これによる損害について、運営は責任を負いません。</P>
 
-        <H>第7条（免責事項）</H>
-        <P>本サービスは現状有姿で提供されます。データの消失・システム障害・第三者サービスの障害による損害について、運営は責任を負いません。</P>
+        <H>第9条（免責事項）</H>
+        <P>本サービスは現状有姿で提供されます。データの消失・システム障害・第三者サービスの障害による損害について、運営は責任を負いません。ユーザー間のトラブルについても運営は一切の責任を負いません。</P>
 
-        <H>第8条（準拠法・管轄裁判所）</H>
+        <H>第10条（準拠法・管轄裁判所）</H>
         <P>本規約は日本法に準拠し、東京地方裁判所を第一審の管轄裁判所とします。</P>
 
         <H>お問い合わせ</H>
         <P>X（旧Twitter）: <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a></P>
         <P>Email: <a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a></P>
+
+        </div>
       </div>
     </div>
   );
@@ -4511,8 +4536,8 @@ function CreatorHubModal({ session, creatorProfile, onRegister, onMaterialSubmit
     if (creatorProfile?.id) getMyMaterials(creatorProfile.id).then(setMyMaterials);
   },[creatorProfile?.id]);
 
-  // 未ログイン
-  if (!session) return (
+  // 未ログイン（session自体がないか、user情報がない場合）
+  if (!session?.user?.id) return (
     <div style={{ ...S.overlay, zIndex:3000 }} onClick={onClose}>
       <div style={{ ...S.modal }} onClick={e=>e.stopPropagation()}>
         <div style={{ textAlign:"center", padding:"32px 20px" }}>
@@ -4663,6 +4688,7 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
       const uid = crypto.randomUUID();
       const thumbUrl = await uploadFile("creator-thumbnails", `${uid}/thumbnail.${thumbnail.name.split(".").pop()}`, thumbnail);
       const material = await submitMaterial({ creator_id:creatorId, name:name.trim(), description:description.trim(), type, is_animated:isAnimated, price, thumbnail_url:thumbUrl, status:"pending" });
+      if (!material?.id) throw new Error("素材の登録に失敗しました。時間をおいて再試行してください。");
       for (let i=0; i<matFiles.length; i++) {
         const f = matFiles[i];
         const fileUrl = await uploadFile("creator-materials", `${material.id}/item-${i}.${f.file.name.split(".").pop()}`, f.file);
@@ -4778,42 +4804,54 @@ function PrivacyModal({ onClose }) {
   const P = ({children})=><p style={{ fontSize:12,color:"#d1d5db",lineHeight:1.8,marginBottom:4 }}>{children}</p>;
   return (
     <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
-      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 0",display:"flex",flexDirection:"column" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexShrink:0 }}>
           <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>🔒 プライバシーポリシー</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ fontSize:10,color:"#6b7280",marginBottom:16 }}>最終更新日：2026年5月30日</div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:12,flexShrink:0 }}>最終更新日：2026年6月18日</div>
+        <div style={{ overflowY:"auto",flex:1,paddingBottom:28 }}>
 
         <P>SAIDAN（以下「本サービス」）は、ユーザーのプライバシーを尊重し、個人情報を適切に管理します。</P>
 
         <H>1. 収集する情報</H>
         <P>・メールアドレス（アカウント登録時）</P>
         <P>・グッズ・祭壇データ（クラウド同期を利用した場合）</P>
-        <P>・ユーザーがアップロードした画像</P>
+        <P>・ユーザーがアップロードした画像・素材ファイル</P>
+        <P>・購入履歴（素材マーケットプレイスをご利用の場合）</P>
+        <P>・アクセスログ（IPアドレス・ブラウザ情報等）</P>
 
         <H>2. 利用目的</H>
         <P>・サービスの提供・運営・改善</P>
         <P>・ユーザーの識別・認証</P>
         <P>・データのクラウド同期</P>
+        <P>・決済処理・購入履歴の管理</P>
+        <P>・不正利用の検知・防止</P>
 
-        <H>3. 第三者への提供</H>
-        <P>以下のサービスを利用しており、これらへのデータ提供が発生します。</P>
-        <P>・<strong style={{ color:"#e2e8f0" }}>Supabase</strong>（認証・データ保管） — <a href="https://supabase.com/privacy" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>プライバシーポリシー</a></P>
-        <P>上記以外の第三者に個人情報を提供することはありません。</P>
+        <H>3. 利用する外部サービス</H>
+        <P>本サービスは以下の外部サービスを利用しており、各サービスのプライバシーポリシーが適用されます。</P>
+        <P>・<strong style={{ color:"#e2e8f0" }}>Supabase</strong>（認証・データベース・ファイル保管） — <a href="https://supabase.com/privacy" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>プライバシーポリシー</a></P>
+        <P>・<strong style={{ color:"#e2e8f0" }}>Stripe</strong>（決済処理） — <a href="https://stripe.com/jp/privacy" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>プライバシーポリシー</a></P>
+        <P>※ クレジットカード番号等の決済情報はStripeが直接管理します。本サービスにカード情報が渡ることは一切ありません。</P>
+        <P>上記以外の第三者に個人情報を提供することはありません。ただし、法令に基づく開示要請があった場合を除きます。</P>
 
         <H>4. データの保管・削除</H>
-        <P>データはSupabaseのサーバーに保管されます。アカウント削除・データ消去のご要望はお問い合わせください。</P>
+        <P>収集したデータはSupabaseのサーバー（米国）に保管されます。アカウント削除・データ消去をご希望の場合は下記メールアドレスまでお問い合わせください。</P>
 
-        <H>5. ローカルストレージについて</H>
-        <P>本サービスはデータ保存のためにブラウザのlocalStorageを使用します。ブラウザの設定から削除できます。</P>
+        <H>5. ローカルストレージ・Cookie</H>
+        <P>本サービスはデータ保存のためにブラウザのlocalStorageを使用します。ログイン状態の維持にセッション情報を保存します。ブラウザの設定から削除できます。</P>
 
-        <H>6. 本ポリシーの変更</H>
-        <P>内容を変更する場合は本ページで告知します。継続利用をもって同意とみなします。</P>
+        <H>6. 未成年者について</H>
+        <P>本サービスは13歳以上を対象としています。13歳未満の方の個人情報は収集しません。</P>
+
+        <H>7. 本ポリシーの変更</H>
+        <P>内容を変更する場合は本ページで告知します。重要な変更の場合はアプリ内でお知らせします。継続利用をもって同意とみなします。</P>
 
         <H>お問い合わせ</H>
         <P>X（旧Twitter）: <a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a></P>
         <P>Email: <a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a></P>
+
+        </div>
       </div>
     </div>
   );
@@ -4830,19 +4868,21 @@ function TokushoModal({ onClose }) {
   );
   return (
     <div style={{ ...S.overlay,zIndex:4000,alignItems:"center" }} onClick={onClose}>
-      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 32px" }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+      <div style={{ ...S.modal,borderRadius:20,maxWidth:480,maxHeight:"85vh",padding:"24px 20px 0",display:"flex",flexDirection:"column" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexShrink:0 }}>
           <div style={{ fontSize:17,fontWeight:800,color:"#c084fc" }}>📋 特定商取引法に基づく表記</div>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer" }}>✕</button>
         </div>
-        <div style={{ fontSize:10,color:"#6b7280",marginBottom:20 }}>最終更新日：2026年6月6日</div>
+        <div style={{ fontSize:10,color:"#6b7280",marginBottom:12,flexShrink:0 }}>最終更新日：2026年6月18日</div>
+        <div style={{ overflowY:"auto",flex:1,paddingBottom:28 }}>
 
         <div style={{ background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:10,padding:"10px 14px",fontSize:11,color:"#fbbf24",marginBottom:20,lineHeight:1.7 }}>
           ⚠️ 販売業者名・住所・電話番号は、法令に基づき請求があり次第遅滞なく開示いたします。開示をご希望の場合は下記メールアドレスまでお問い合わせください。
         </div>
 
-        <Row label="販売業者" value="SAIDAN運営（屋号）※本名は請求時開示" />
-        <Row label="運営責任者" value="SAIDAN運営" />
+        <H>事業者情報</H>
+        <Row label="販売業者" value="SAIDAN（屋号）※本名は請求時開示" />
+        <Row label="運営責任者" value="請求があり次第、遅滞なく開示いたします" />
         <Row label="所在地" value="請求があり次第、遅滞なく開示いたします" />
         <Row label="電話番号" value="請求があり次第、遅滞なく開示いたします" />
         <Row label="メールアドレス" value="support.saidan@gmail.com" />
@@ -4855,6 +4895,7 @@ function TokushoModal({ onClose }) {
         <H>お支払いについて</H>
         <Row label="支払方法" value="クレジットカード（Stripe）" />
         <Row label="支払時期" value="購入手続き完了時にご請求" />
+        <Row label="カード情報" value="カード情報はStripeが直接処理するため、当サービスには一切保存されません" />
 
         <H>商品の提供について</H>
         <Row label="提供時期" value="購入完了直後（デジタルコンテンツのため即時提供）" />
@@ -4869,6 +4910,8 @@ function TokushoModal({ onClose }) {
         <H>お問い合わせ</H>
         <Row label="X（旧Twitter）" value={<a href="https://x.com/SAIDANdayo" target="_blank" rel="noreferrer" style={{ color:"#818cf8" }}>@SAIDANdayo</a>} />
         <Row label="メール" value={<a href="mailto:support.saidan@gmail.com" style={{ color:"#818cf8" }}>support.saidan@gmail.com</a>} />
+
+        </div>
       </div>
     </div>
   );
