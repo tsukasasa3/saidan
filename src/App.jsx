@@ -813,6 +813,8 @@ export default function App() {
         mode={showAuth}
         session={session}
         onLogin={async(sess)=>{
+          showToast(`[LOGIN] AT:${!!sess?.access_token} uid:${sess?.user?.id||"none"}`);
+          await new Promise(r=>setTimeout(r,2500));
           setSession(sess);
           setShowAuth(false);
           showToast("データを同期中…");
