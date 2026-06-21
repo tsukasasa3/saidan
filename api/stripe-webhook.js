@@ -65,13 +65,18 @@ export default async function handler(req, res) {
     }
 
     // Webhookの再送による二重記録を防ぐ（payment_intentで重複チェック）
+    // SELECTが権限エラーになっても無視してINSERTを続行する
     if (session.payment_intent) {
-      const existing = await sbAdmin(
-        `/rest/v1/purchases?stripe_payment_intent=eq.${session.payment_intent}&select=id`
-      );
-      if (existing?.length > 0) {
-        console.log(`Duplicate webhook ignored: payment_intent=${session.payment_intent}`);
-        return res.json({ received: true });
+      try {
+        const existing = await sbAdmin(
+          `/rest/v1/purchases?stripe_payment_intent=eq.${session.payment_intent}&select=id`
+        );
+        if (existing?.length > 0) {
+          console.log(`Duplicate webhook ignored: payment_intent=${session.payment_intent}`);
+          return res.json({ received: true });
+        }
+      } catch (e) {
+        console.log("Dedup check skipped (will attempt insert):", e.message);
       }
     }
 
