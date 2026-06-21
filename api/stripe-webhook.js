@@ -64,34 +64,23 @@ export default async function handler(req, res) {
       return res.json({ received: true });
     }
 
-    // Webhookの再送による二重記録を防ぐ（payment_intentで重複チェック）
-    // SELECTが権限エラーになっても無視してINSERTを続行する
-    if (session.payment_intent) {
-      try {
-        const existing = await sbAdmin(
-          `/rest/v1/purchases?stripe_payment_intent=eq.${session.payment_intent}&select=id`
-        );
-        if (existing?.length > 0) {
-          console.log(`Duplicate webhook ignored: payment_intent=${session.payment_intent}`);
-          return res.json({ received: true });
-        }
-      } catch (e) {
-        console.log("Dedup check skipped (will attempt insert):", e.message);
-      }
-    }
-
     try {
-      // 購入履歴を記録
-      const purchase = await sbAdmin("/rest/v1/purchases", {
-        method:  "POST",
-        headers: { "Prefer": "return=representation" },
+      // SECURITY DEFINER関数経由で購入履歴を記録（anon keyでも動作）
+      const purchaseId = await sbAdmin("/rest/v1/rpc/record_stripe_purchase", {
+        method: "POST",
         body: JSON.stringify({
-          user_id:                userId,
-          material_id:            materialId,
-          amount_paid:            amountPaid,
-          stripe_payment_intent:  session.payment_intent,
+          p_user_id:               userId,
+          p_material_id:           materialId,
+          p_amount_paid:           amountPaid,
+          p_stripe_payment_intent: session.payment_intent,
         }),
       });
+      // nullが返った場合は重複（unique_violation）
+      if (purchaseId === null) {
+        console.log(`Duplicate webhook ignored: payment_intent=${session.payment_intent}`);
+        return res.json({ received: true });
+      }
+      const purchase = [{ id: purchaseId }];
 
       // クリエイターの売上を記録（80%）
       const materials = await sbAdmin(
