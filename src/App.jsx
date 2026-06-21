@@ -4486,10 +4486,78 @@ function AdminPanel({ onClose, showToast, onApproved }) {
   );
 }
 
+// ─── MaterialDetailModal ──────────────────────────────────────
+function MaterialDetailModal({ material, isPurchased, onFreePurchase, onPaidPurchase, onClose }) {
+  const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
+  const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック", light:"ライト" };
+  const items = material.material_items || [];
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:1000, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end" }} onClick={onClose}>
+      <div style={{ width:"100%", maxWidth:480, background:"#1a0a2e", borderRadius:"24px 24px 0 0", maxHeight:"85vh", display:"flex", flexDirection:"column", overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
+        {/* ドラッグバー */}
+        <div style={{ width:40, height:4, borderRadius:2, background:"rgba(255,255,255,0.2)", margin:"12px auto 0" }} />
+
+        {/* ヘッダー */}
+        <div style={{ display:"flex", gap:14, padding:"16px 18px 14px", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ width:80, height:80, borderRadius:12, overflow:"hidden", flexShrink:0, background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {material.thumbnail_url
+              ? <img src={material.thumbnail_url} alt={material.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              : <span style={{ fontSize:32 }}>{TYPE_EMOJI[material.type]}</span>
+            }
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:11, color:"#7c6a9a", marginBottom:3 }}>{TYPE_EMOJI[material.type]} {TYPE_LABEL[material.type]}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#f0e8ff", marginBottom:2, lineHeight:1.3 }}>{material.name}</div>
+            <div style={{ fontSize:11, color:"#6b7280", marginBottom:6 }}>by {material.creator_profiles?.display_name}</div>
+            {material.description && <div style={{ fontSize:12, color:"#9ca3af", lineHeight:1.5 }}>{material.description}</div>}
+          </div>
+        </div>
+
+        {/* アイテム一覧 */}
+        <div style={{ flex:1, overflowY:"auto", padding:"14px 18px" }}>
+          <div style={{ fontSize:12, color:"#7c6a9a", marginBottom:10 }}>
+            収録素材 <span style={{ color:"#e879f9", fontWeight:700 }}>{items.length}点</span>
+          </div>
+          {items.length === 0 ? (
+            <div style={{ textAlign:"center", padding:"30px 0", color:"#4b5563", fontSize:13 }}>プレビューがありません</div>
+          ) : (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:8 }}>
+              {items.map((item, i) => (
+                <div key={i} style={{ aspectRatio:"1", borderRadius:10, overflow:"hidden", background:"rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {item.file_url
+                    ? <img src={item.file_url} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", padding:4, boxSizing:"border-box" }} />
+                    : <span style={{ fontSize:24 }}>🎀</span>
+                  }
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 購入ボタン */}
+        <div style={{ padding:"14px 18px 32px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
+          {isPurchased ? (
+            <div style={{ textAlign:"center", fontSize:14, fontWeight:700, color:"#4ade80", padding:"12px 0" }}>✓ 追加済み</div>
+          ) : material.price === 0 ? (
+            <button onClick={()=>{ onFreePurchase(material.id); onClose(); }} style={{ width:"100%", padding:"14px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#4ade80,#22c55e)", color:"#fff", fontSize:15, fontWeight:800, cursor:"pointer" }}>
+              無料で追加する
+            </button>
+          ) : (
+            <button onClick={()=>{ onPaidPurchase(material); onClose(); }} style={{ width:"100%", padding:"14px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#fbbf24,#f59e0b)", color:"#fff", fontSize:15, fontWeight:800, cursor:"pointer" }}>
+              ¥{material.price} で購入する
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MarketPage ───────────────────────────────────────────────
 function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePurchase, onPaidPurchase, onOpenCreatorHub }) {
   const [filter, setFilter]   = useState("all");
   const [query, setQuery]     = useState("");
+  const [selected, setSelected] = useState(null);
   const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
   const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック", light:"ライト" };
 
@@ -4555,7 +4623,7 @@ function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePur
           {filtered.map(m=>{
             const isPurchased = purchaseIds.includes(m.id);
             return (
-              <div key={m.id} style={{ background:"rgba(255,255,255,0.04)", borderRadius:16, overflow:"hidden", border:"1px solid rgba(255,255,255,0.08)" }}>
+              <div key={m.id} onClick={()=>setSelected(m)} style={{ background:"rgba(255,255,255,0.04)", borderRadius:16, overflow:"hidden", border:"1px solid rgba(255,255,255,0.08)", cursor:"pointer", transition:"transform 0.15s", active:{transform:"scale(0.97)"} }}>
                 {/* サムネイル */}
                 <div style={{ aspectRatio:"1", background:"rgba(255,255,255,0.04)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
                   {m.thumbnail_url
@@ -4563,28 +4631,34 @@ function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePur
                     : <span style={{ fontSize:36 }}>{TYPE_EMOJI[m.type]}</span>
                   }
                   {m.is_animated && <span style={{ position:"absolute", top:6, right:6, background:"rgba(168,85,247,0.85)", color:"#fff", fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:20 }}>✨ANIM</span>}
+                  {isPurchased && <span style={{ position:"absolute", top:6, left:6, background:"rgba(74,222,128,0.85)", color:"#fff", fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:20 }}>✓ 追加済み</span>}
                 </div>
                 <div style={{ padding:"10px 12px 12px" }}>
                   <div style={{ fontSize:11, color:"#7c6a9a", marginBottom:2 }}>{TYPE_EMOJI[m.type]} {TYPE_LABEL[m.type]}</div>
                   <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.name}</div>
-                  <div style={{ fontSize:10, color:"#6b7280", marginBottom:10 }}>{m.creator_profiles?.display_name}</div>
+                  <div style={{ fontSize:10, color:"#6b7280", marginBottom:6 }}>{m.creator_profiles?.display_name}</div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <span style={{ fontSize:12, fontWeight:800, color:m.price===0?"#4ade80":"#fbbf24" }}>
                       {m.price===0?"無料":`¥${m.price}`}
                     </span>
-                    {isPurchased ? (
-                      <span style={{ fontSize:10, color:"#4ade80", fontWeight:700 }}>✓ 追加済み</span>
-                    ) : m.price===0 ? (
-                      <button onClick={()=>onFreePurchase(m.id)} style={{ fontSize:11, padding:"5px 12px", borderRadius:20, border:"none", background:"rgba(74,222,128,0.2)", color:"#4ade80", cursor:"pointer", fontWeight:700 }}>追加する</button>
-                    ) : (
-                      <button onClick={()=>onPaidPurchase(m)} style={{ fontSize:11, padding:"5px 12px", borderRadius:20, border:"none", background:"rgba(251,191,36,0.2)", color:"#fbbf24", cursor:"pointer", fontWeight:700 }}>¥{m.price} 購入</button>
-                    )}
+                    <span style={{ fontSize:10, color:"#6b7280" }}>{m.material_items?.length || 0}点収録</span>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* 詳細モーダル */}
+      {selected && (
+        <MaterialDetailModal
+          material={selected}
+          isPurchased={purchaseIds.includes(selected.id)}
+          onFreePurchase={onFreePurchase}
+          onPaidPurchase={onPaidPurchase}
+          onClose={()=>setSelected(null)}
+        />
       )}
 
       {/* クリエイター導線 */}
