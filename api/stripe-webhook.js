@@ -16,7 +16,11 @@ async function sbAdmin(path, options = {}) {
     },
   });
   const text = await res.text();
-  return text ? JSON.parse(text) : null;
+  const json = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    throw new Error(`Supabase ${res.status}: ${text}`);
+  }
+  return json;
 }
 
 async function getRawBody(req) {
