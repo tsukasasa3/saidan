@@ -2637,9 +2637,8 @@ function CreatorMaterialsSection({ tab, creatorFrames, creatorDecoPacks, altar, 
                 border:`1px solid ${alreadyAdded?"rgba(167,139,250,0.4)":"rgba(255,255,255,0.08)"}`,
                 position:"relative" }}>
                 {alreadyAdded&&<div style={{ position:"absolute",top:3,right:3,fontSize:8,background:"rgba(167,139,250,0.6)",color:"#fff",borderRadius:4,padding:"1px 4px",fontWeight:700 }}>✓</div>}
-                <img src={item.file_url} alt={item.item_name} style={{ width:48,height:48,objectFit:"contain",margin:"0 auto 4px",display:"block" }}
+                <img src={item.file_url} alt={item.item_name} style={{ width:48,height:48,objectFit:"contain",margin:"0 auto",display:"block" }}
                   onError={e=>{ e.target.style.display="none"; }}/>
-                <div style={{ fontSize:9,color:"#9ca3af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.item_name}</div>
               </div>
             );
           })}
