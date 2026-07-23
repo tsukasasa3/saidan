@@ -4297,6 +4297,16 @@ function TermsModal({ onClose }) {
         <P>4. クリエイターへの収益は売上の80%を原則とし、残り20%はサービス運営費として徴収します。</P>
         <P>5. デジタルコンテンツの性質上、購入完了後の返品・返金は原則お受けできません。</P>
 
+        <H>第5条の2（オリジナル作品の保証・盗作禁止）</H>
+        <P>1. クリエイターは出品時に「この素材が自身のオリジナル作品であること」を宣言するものとします。</P>
+        <P>2. 他者の作品のトレース・模倣・盗用・無断転載を含む素材の出品を固く禁止します。</P>
+        <P>3. AIが生成した画像を第三者の著作物の学習データとして無断使用した可能性がある場合も同様に禁止します。</P>
+        <P>4. 盗作・トレスが確認または合理的に疑われる場合、運営は以下の措置を予告なく講じることができます：</P>
+        <P>　・当該素材の非公開化・削除</P>
+        <P>　・未払い売上の没収</P>
+        <P>　・クリエイターアカウントの停止・永久凍結</P>
+        <P>5. 権利者（または代理人）からの申告は support.saidan@gmail.com で受け付けます。運営は申告内容を確認のうえ、必要な対応を行います。</P>
+
         <H>第6条（決済）</H>
         <P>1. 有料コンテンツの決済はStripe（Stripe, Inc.）を通じて行われます。</P>
         <P>2. クレジットカード情報はStripeが管理し、本サービスには一切渡りません。</P>
@@ -4304,7 +4314,9 @@ function TermsModal({ onClose }) {
 
         <H>第7条（禁止事項）</H>
         <P>・法令または公序良俗に反する行為</P>
-        <P>・第三者の権利を侵害する行為</P>
+        <P>・第三者の著作権・肖像権・商標権を侵害する行為</P>
+        <P>・他者の作品のトレース・盗作・無断転載・模倣</P>
+        <P>・オリジナル作品である旨の虚偽申告</P>
         <P>・本サービスの運営を妨げる行為（不正アクセス・スクレイピング等）</P>
         <P>・虚偽の情報登録</P>
         <P>・購入素材の無断転載・再配布・商業利用</P>
@@ -4534,7 +4546,7 @@ function MaterialDetailModal({ material, isPurchased, onFreePurchase, onPaidPurc
         </div>
 
         {/* 購入ボタン */}
-        <div style={{ padding:"14px 18px 32px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ padding:"14px 18px 24px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
           {isPurchased ? (
             <div style={{ textAlign:"center", fontSize:14, fontWeight:700, color:"#4ade80", padding:"12px 0" }}>✓ 追加済み</div>
           ) : material.price === 0 ? (
@@ -4546,6 +4558,17 @@ function MaterialDetailModal({ material, isPurchased, onFreePurchase, onPaidPurc
               ¥{material.price} で購入する
             </button>
           )}
+          {/* 通報リンク */}
+          <div style={{ textAlign:"center", marginTop:12 }}>
+            <a
+              href={`mailto:support.saidan@gmail.com?subject=${encodeURIComponent(`【通報】素材: ${material.name}`)}&body=${encodeURIComponent(`素材ID: ${material.id}\n素材名: ${material.name}\n\n通報内容（トレス・盗作・その他）:\n\n`)}`}
+              style={{ fontSize:11, color:"rgba(255,255,255,0.2)", textDecoration:"none", borderBottom:"1px solid rgba(255,255,255,0.1)", paddingBottom:1, transition:"color 0.15s" }}
+              onMouseEnter={e=>e.target.style.color="rgba(255,100,100,0.6)"}
+              onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.2)"}
+            >
+              ⚑ この素材を通報する
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -4818,6 +4841,7 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
   const [thumbPreview,setThumbPreview]= useState(null);
   const [matFiles,    setMatFiles]    = useState([]);
   const [uploading,   setUploading]   = useState(false);
+  const [agreedOriginal, setAgreedOriginal] = useState(false);
   const thumbRef = useRef(null);
   const filesRef = useRef(null);
 
@@ -4863,7 +4887,7 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
     setUploading(false);
   };
 
-  const canSubmit = !uploading && name.trim() && thumbnail && matFiles.length>0;
+  const canSubmit = !uploading && name.trim() && thumbnail && matFiles.length>0 && agreedOriginal;
 
   return (
     <div style={{ ...S.overlay, zIndex:4000 }} onClick={onClose}>
@@ -4949,9 +4973,22 @@ function CreatorUploadModal({ creatorId, onSubmitted, onClose, showToast }) {
         </div>
 
         {/* 著作権注意 */}
-        <div style={{ background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.25)", borderRadius:8, padding:"8px 12px", fontSize:10, color:"#fbbf24", lineHeight:1.7, marginBottom:16 }}>
+        <div style={{ background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.25)", borderRadius:8, padding:"8px 12px", fontSize:10, color:"#fbbf24", lineHeight:1.7, marginBottom:12 }}>
           ⚠️ 著作権・肖像権・商標権など第三者の権利を侵害するコンテンツは禁止です。<strong>オリジナル作品・商用利用可のフリー素材</strong>のみご使用ください。
         </div>
+
+        {/* オリジナル宣言チェックボックス */}
+        <label style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", marginBottom:16, padding:"10px 12px", borderRadius:8, border:`1px solid ${agreedOriginal?"rgba(168,85,247,0.4)":"rgba(255,255,255,0.08)"}`, background:agreedOriginal?"rgba(168,85,247,0.06)":"transparent", transition:"all 0.15s" }}>
+          <input
+            type="checkbox"
+            checked={agreedOriginal}
+            onChange={e=>setAgreedOriginal(e.target.checked)}
+            style={{ marginTop:2, accentColor:"#a855f7", width:14, height:14, flexShrink:0, cursor:"pointer" }}
+          />
+          <span style={{ fontSize:11, color: agreedOriginal ? "#c084fc" : "#9ca3af", lineHeight:1.7 }}>
+            この素材は<strong style={{ color: agreedOriginal ? "#e879f9" : "#d1d5db" }}>自分自身が制作したオリジナル作品</strong>であり、トレス・盗作・無断転載を一切含みません。虚偽申告の場合、売上没収・アカウント停止の対象となることに同意します。
+          </span>
+        </label>
 
         <button onClick={handleSubmit} disabled={!canSubmit}
           style={{ width:"100%", padding:"12px", borderRadius:12, border:"none", background:canSubmit?"linear-gradient(135deg,#e879f9,#a855f7)":"#374151", color:"#fff", fontSize:14, fontWeight:700, cursor:canSubmit?"pointer":"not-allowed", opacity:uploading?0.7:1 }}>
