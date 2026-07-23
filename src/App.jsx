@@ -348,9 +348,6 @@ const MATERIALS = [
   { id:"dc_hand_face",  type:"deco", name:"てがき顔",   emoji:"☺️", tier:"free", animated:false, desc:"手描きのにこにこ", image:"/hand-face.svg"  },
   { id:"dc_hand_star",  type:"deco", name:"てがき星",   emoji:"✨", tier:"free", animated:false, desc:"手描きのきらきら", image:"/hand-star.svg"  },
   { id:"dc_hand_heart", type:"deco", name:"てがきハート",emoji:"🩷", tier:"free", animated:false, desc:"手描きのふわはーと",image:"/hand-heart.svg" },
-  // ── ライト ────────────────────────────────────────────────
-  { id:"lt_spot", type:"light", name:"スポット", emoji:"🔦", tier:"free", animated:false, desc:"中央を照らす" },
-  { id:"lt_warm", type:"light", name:"ウォーム", emoji:"🌟", tier:"free", animated:false, desc:"温かい光"     },
 ];
 
 // グッズ種類マスタ（無料プランでも絞り込み可能）
@@ -430,7 +427,7 @@ function decodeAltarFromURL() {
 }
 
 function makeAltar(name="私の推し祭壇") {
-  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, nameColor:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, bgCustomImage:null, frameMaterialId:null, frameCustomColor:null, frameCustomImage:null, lightId:null };
+  return { id:newUid(), name, hideEmojiDecor:false, templateId:"shrine", customColors:null, nameColor:null, altarMode:"shelf", shelfStyleId:"default", shelf:Array.from({length:SHELF_ROWS},()=>Array(SHELF_COLS).fill(null)), hinaShelf:Array.from({length:5},(_,i)=>Array(i+2).fill(null)).reverse(), showcaseShelf:Array.from({length:3},()=>Array(4).fill(null)), flatShelf:Array(8).fill(null), freeItems:[], decoItems:[], bgMaterialId:null, bgCustomColor:null, bgCustomImage:null, frameMaterialId:null, frameCustomColor:null, frameCustomImage:null };
 }
 
 // ─── Root ─────────────────────────────────────────────────────
@@ -1944,7 +1941,7 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
         {!viewingShared&&<button onClick={onAutoArrange} style={{ ...S.modeBtn,border:"1px solid rgba(255,200,100,0.3)",color:"#fcd34d" }}>✨ 自動配置</button>}
         {!viewingShared&&altarMode==="free"&&freeItems.length>0&&<button onClick={()=>setShowLayerPanel(l=>!l)} style={{ ...S.modeBtn,border:`1px solid ${showLayerPanel?"rgba(165,180,252,0.5)":"rgba(165,180,252,0.2)"}`,color:"#a5b4fc",background:showLayerPanel?"rgba(165,180,252,0.1)":"transparent" }}>🔲 レイヤー</button>}
         {!viewingShared&&<button onClick={onOpenBgPicker} style={{ ...S.modeBtn,border:`1px solid ${altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.25)"}`,color:"#818cf8",background:altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?"rgba(99,102,241,0.12)":"transparent" }}>🌌 背景{altar.bgMaterialId||altar.bgCustomColor||altar.customColors||altar.bgCustomImage?" ✓":""}</button>}
-        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length||altar.lightId)?` ✓`:""}</button>}
+        {!viewingShared&&<button onClick={onOpenMaterials} style={{ ...S.modeBtn,border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",background:altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length?"rgba(192,132,252,0.1)":"transparent" }}>🎨 素材{(altar.frameMaterialId||altar.frameCustomImage||altar.decoItems?.length)?` ✓`:""}</button>}
         <button onClick={onOpenShare} style={S.shareBtn}>📸 シェア</button>
       </div>
 
@@ -1954,7 +1951,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
-          <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <AltarTopBar template={template} altarName={altar.name} hideEmojiDecor={altar.hideEmojiDecor} nameColor={altar.nameColor}/>
@@ -2003,7 +1999,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
-          <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
@@ -2029,7 +2024,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
-          <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
@@ -2054,7 +2048,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
-          <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           <DecoLayer decoItems={decoItems} isDark={template.dark!==false} viewingShared={viewingShared}
@@ -2085,7 +2078,6 @@ function AltarPage({ altar, template, goods, altars, isPro, isPremium, viewingSh
           {template.star&&<StarField/>}
           <AnimatedBG materialId={altar.bgMaterialId}/>
           {altar.bgCustomImage&&<img src={altar.bgCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,pointerEvents:"none"}}/>}
-          <LightOverlay materialId={altar.lightId}/>
           <FrameOverlay materialId={altar.frameMaterialId} frameCustomColor={altar.frameCustomColor}/>
           {altar.frameCustomImage&&<img src={altar.frameCustomImage} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"fill",zIndex:11,pointerEvents:"none",borderRadius:18}}/>}
           {/* Deco stickers on free altar */}
@@ -2229,22 +2221,6 @@ function FrameOverlay({ materialId, frameCustomColor }) {
   );
 }
 
-// ─── Light Overlay ────────────────────────────────────────────
-function LightOverlay({ materialId }) {
-  if (!materialId) return null;
-  const overlays = {
-    lt_spot:    <div style={{ position:"absolute",top:0,left:"30%",right:"30%",height:"100%",background:"radial-gradient(ellipse at 50% 30%,rgba(255,255,200,0.15) 0%,transparent 70%)",pointerEvents:"none",zIndex:5 }}/>,
-    lt_rainbow: <div style={{ position:"absolute",inset:0,background:"linear-gradient(135deg,rgba(255,0,0,0.04),rgba(255,165,0,0.04),rgba(255,255,0,0.04),rgba(0,255,0,0.04),rgba(0,0,255,0.04),rgba(128,0,128,0.04))",pointerEvents:"none",zIndex:5,animation:"rainbowShift 4s linear infinite" }}/>,
-    lt_candle:  <div style={{ position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 80%,rgba(255,180,50,0.12) 0%,transparent 60%)",pointerEvents:"none",zIndex:5,animation:"candleFlicker 1.5s ease-in-out infinite alternate" }}/>,
-    lt_disco:   <div style={{ position:"absolute",inset:0,background:"conic-gradient(rgba(255,0,128,0.08),rgba(0,255,255,0.08),rgba(128,0,255,0.08),rgba(255,200,0,0.08),rgba(255,0,128,0.08))",pointerEvents:"none",zIndex:5,animation:"discoSpin 3s linear infinite" }}/>,
-  };
-  return (
-    <>
-      <style>{`@keyframes rainbowShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}} @keyframes candleFlicker{from{opacity:0.7}to{opacity:1}} @keyframes discoSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-      {overlays[materialId]||null}
-    </>
-  );
-}
 
 // ─── Bg Modal ─────────────────────────────────────────────────
 function BgModal({ altar, onUpdateAltar, onClose }) {
@@ -2705,7 +2681,7 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMateria
     if (!imgUrl) { setCustomDecoImg(null); setCustomDecoName(""); }
     alert("追加しました！祭壇上で位置を調整してください ✓");
   };
-  const TABS = [["frame","🖼 フレーム"],["deco","🎀 デコ"],["light","💡 ライト"]];
+  const TABS = [["frame","🖼 フレーム"],["deco","🎀 デコ"]];
   const items = MATERIALS.filter(m=>m.type===tab);
 
   // Frame color presets
@@ -2735,12 +2711,10 @@ function MaterialsModal({ altar, onUpdateAltar, canUseMaterial, purchasedMateria
   const isActive = (mat) => {
     if (mat.type==="frame") return altar.frameMaterialId===mat.id;
     if (mat.type==="deco")  return (altar.decoItems||[]).some(d=>d.materialId===mat.id);
-    if (mat.type==="light") return altar.lightId===mat.id;
   };
   const toggle = (mat) => {
     if (!canUseMaterial(mat)) return;
     if (mat.type==="frame") onUpdateAltar({frameMaterialId: altar.frameMaterialId===mat.id?null:mat.id});
-    if (mat.type==="light") onUpdateAltar({lightId:         altar.lightId===mat.id?null:mat.id});
     if (mat.type==="deco")  {
       const cur = altar.decoItems||[];
       const exists = cur.find(d=>d.materialId===mat.id);
@@ -4393,7 +4367,7 @@ function AdminPanel({ onClose, showToast, onApproved }) {
     } catch(e) { showToast("エラー: "+(e?.message||String(e))); }
   };
 
-  const TYPE_LABEL = { frame:"🖼 フレーム", deco_pack:"🎀 デコパック", light:"💡 ライト" };
+  const TYPE_LABEL = { frame:"🖼 フレーム", deco_pack:"🎀 デコパック" };
 
   return (
     <div style={{ ...S.overlay, zIndex:5000 }} onClick={onClose}>
@@ -4499,8 +4473,8 @@ function AdminPanel({ onClose, showToast, onApproved }) {
 
 // ─── MaterialDetailModal ──────────────────────────────────────
 function MaterialDetailModal({ material, isPurchased, onFreePurchase, onPaidPurchase, onClose }) {
-  const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
-  const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック", light:"ライト" };
+  const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀" };
+  const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック" };
   const items = material.material_items || [];
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:1000, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end" }} onClick={onClose}>
@@ -4580,8 +4554,8 @@ function MarketPage({ materials, purchaseIds, session, creatorProfile, onFreePur
   const [filter, setFilter]   = useState("all");
   const [query, setQuery]     = useState("");
   const [selected, setSelected] = useState(null);
-  const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀", light:"💡" };
-  const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック", light:"ライト" };
+  const TYPE_EMOJI = { frame:"🖼", deco_pack:"🎀" };
+  const TYPE_LABEL = { frame:"フレーム", deco_pack:"デコパック" };
 
   const filtered = materials.filter(m => {
     if (filter !== "all" && m.type !== filter) return false;
@@ -4754,7 +4728,7 @@ function CreatorHubModal({ session, creatorProfile, onRegister, onMaterialSubmit
             <button onClick={onClose} style={{ background:"none", border:"none", color:"#9ca3af", fontSize:18, cursor:"pointer" }}>✕</button>
           </div>
           <div style={{ fontSize:12, color:"#9ca3af", marginBottom:20, lineHeight:1.7 }}>
-            SAIDANクリエイターとしてフレーム・デコ・ライト素材を販売できます。<br/>申請後、運営の審査があります（通常1〜3営業日）。
+            SAIDANクリエイターとしてフレーム・デコ素材を販売できます。<br/>申請後、運営の審査があります（通常1〜3営業日）。
           </div>
           <div style={S.fieldGroup}>
             <label style={S.label}>クリエイター名 *</label>
