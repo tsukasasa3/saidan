@@ -94,6 +94,43 @@
   }
   .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 
+  .nav-creator {
+    font-size: 12px; font-weight: 700; color: var(--violet);
+    text-decoration: none; letter-spacing: 0.3px; opacity: 0.8;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .nav-creator:hover { opacity: 1; }
+
+  /* ── Creator banner ── */
+  .creator-banner {
+    padding: 56px 80px;
+    background: linear-gradient(135deg, #f5f2fb 0%, #faf7f5 100%);
+    border-top: 1px solid rgba(124,58,237,0.1);
+    display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  }
+  .creator-banner-eyebrow {
+    font-size: 10px; font-weight: 700; letter-spacing: 3px;
+    color: var(--violet); margin-bottom: 8px; text-transform: uppercase;
+  }
+  .creator-banner-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(20px, 2.5vw, 30px); font-weight: 700; line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .creator-banner-desc {
+    font-size: 13px; color: rgba(12,7,20,0.5); line-height: 1.7;
+  }
+  .creator-banner-btn {
+    flex-shrink: 0;
+    background: var(--violet); color: #fff;
+    padding: 14px 28px; border-radius: 100px;
+    font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.5px;
+    transition: all 0.2s; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .creator-banner-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,0.3); }
+
   /* ── Hero ── */
   .hero {
     min-height: 100vh;
@@ -803,6 +840,8 @@
     .cta-section { padding: 100px 24px; }
     footer { padding: 32px 24px; flex-direction: column; gap: 20px; text-align: center; }
     .tagline-section { padding: 60px 24px; }
+    .creator-banner { padding: 48px 24px; flex-direction: column; text-align: center; }
+    .nav-creator { display: none; }
   }
 </style>
 </head>
@@ -817,7 +856,10 @@
     <li><a href="#how">使い方</a></li>
     <li><a href="#collab">コラボ</a></li>
   </ul>
-  <a href="#" class="nav-cta">無料で始める</a>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <a href="/creator" class="nav-creator">✦ クリエイターの方へ</a>
+    <a href="#" class="nav-cta">無料で始める</a>
+  </div>
 </nav>
 
 <!-- Hero -->
@@ -1049,6 +1091,16 @@
     </a>
   </div>
 </section>
+
+<!-- Creator banner -->
+<div class="creator-banner">
+  <div class="creator-banner-text">
+    <p class="creator-banner-eyebrow">For Creators</p>
+    <h2 class="creator-banner-title">素材を作って売りませんか？</h2>
+    <p class="creator-banner-desc">イラスト・デコ素材を出品するだけ。売上の<strong>80%</strong>がそのまま手元に。</p>
+  </div>
+  <a href="/creator" class="creator-banner-btn">クリエイター向けページを見る →</a>
+</div>
 
 <!-- Footer -->
 <footer>
