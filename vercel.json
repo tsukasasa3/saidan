@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/lp", "destination": "/lp.html" },
+    { "source": "/creator", "destination": "/creator.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
