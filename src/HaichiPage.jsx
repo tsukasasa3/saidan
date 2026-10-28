@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const TYPES = ["アクスタ", "ぬいぐるみ", "缶バッジ", "フィギュア", "クリアファイル", "タペストリー", "その他"];
+const TYPES = ["アクスタ", "ぬいぐるみ", "缶バッジ", "フィギュア", "クリアファイル", "タペストリー", "色紙", "その他"];
 
 const S = {
   page: {
@@ -23,8 +23,25 @@ const S = {
   sub: {
     fontSize: 12,
     color: "#9ca3af",
-    marginBottom: 24,
+    marginBottom: 20,
   },
+  modeRow: {
+    display: "flex",
+    gap: 8,
+    marginBottom: 20,
+  },
+  modeBtn: (active) => ({
+    flex: 1,
+    padding: "10px",
+    borderRadius: 12,
+    border: active ? "1px solid #a78bfa" : "1px solid rgba(255,255,255,0.1)",
+    background: active ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.04)",
+    color: active ? "#a78bfa" : "#6b7280",
+    fontWeight: active ? 700 : 400,
+    fontSize: 13,
+    cursor: "pointer",
+    textAlign: "center",
+  }),
   section: {
     background: "rgba(255,255,255,0.05)",
     borderRadius: 16,
@@ -99,11 +116,11 @@ const S = {
     padding: 0,
     lineHeight: 1,
   },
-  shelfRow: {
+  spaceRow: {
     display: "flex",
     gap: 8,
   },
-  shelfField: {
+  spaceField: {
     flex: 1,
     display: "flex",
     flexDirection: "column",
@@ -151,11 +168,12 @@ const S = {
 };
 
 export default function HaichiPage() {
+  const [mode, setMode]     = useState("shelf"); // "shelf" | "flat"
   const [type, setType]     = useState("アクスタ");
   const [size, setSize]     = useState("");
   const [count, setCount]   = useState("1");
   const [goods, setGoods]   = useState([]);
-  const [shelf, setShelf]   = useState({ width: "", depth: "", height: "" });
+  const [space, setSpace]   = useState({ width: "", depth: "", height: "" });
   const [suggestion, setSuggestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState("");
@@ -169,6 +187,13 @@ export default function HaichiPage() {
 
   const removeGood = (id) => setGoods(prev => prev.filter(g => g.id !== id));
 
+  const handleModeChange = (m) => {
+    setMode(m);
+    setSuggestion("");
+    setError("");
+    setSpace({ width: "", depth: "", height: "" });
+  };
+
   const getSuggestion = async () => {
     if (!goods.length) return;
     setLoading(true);
@@ -178,7 +203,7 @@ export default function HaichiPage() {
       const res = await fetch("/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goods, shelf }),
+        body: JSON.stringify({ goods, space, mode }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); }
@@ -189,10 +214,22 @@ export default function HaichiPage() {
     setLoading(false);
   };
 
+  const isShelf = mode === "shelf";
+
   return (
     <div style={S.page}>
       <div style={S.title}>📐 配置シミュレーター</div>
       <div style={S.sub}>グッズのサイズと個数を入力すると、最適な配置を提案します</div>
+
+      {/* モード切り替え */}
+      <div style={S.modeRow}>
+        <button style={S.modeBtn(isShelf)} onClick={() => handleModeChange("shelf")}>
+          🗄 棚に飾る
+        </button>
+        <button style={S.modeBtn(!isShelf)} onClick={() => handleModeChange("flat")}>
+          📸 平置きで撮る
+        </button>
+      </div>
 
       {/* グッズ追加 */}
       <div style={S.section}>
@@ -242,24 +279,34 @@ export default function HaichiPage() {
         )}
       </div>
 
-      {/* 棚サイズ（任意） */}
+      {/* スペースサイズ（任意） */}
       <div style={S.section}>
-        <div style={S.sectionTitle}>棚のサイズ（任意）</div>
-        <div style={S.shelfRow}>
-          {[["width","幅"],["depth","奥行き"],["height","高さ"]].map(([key, label]) => (
-            <div key={key} style={S.shelfField}>
+        <div style={S.sectionTitle}>
+          {isShelf ? "棚のサイズ（任意）" : "撮影スペースのサイズ（任意）"}
+        </div>
+        <div style={S.spaceRow}>
+          {(isShelf
+            ? [["width","幅"],["depth","奥行き"],["height","高さ"]]
+            : [["width","幅"],["depth","奥行き"]]
+          ).map(([key, label]) => (
+            <div key={key} style={S.spaceField}>
               <div style={S.label}>{label}（cm）</div>
               <input
                 type="number"
                 placeholder="—"
                 style={S.input}
-                value={shelf[key]}
-                onChange={e => setShelf(prev => ({ ...prev, [key]: e.target.value }))}
+                value={space[key]}
+                onChange={e => setSpace(prev => ({ ...prev, [key]: e.target.value }))}
                 min="1"
               />
             </div>
           ))}
         </div>
+        {!isShelf && (
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+            ※ A3用紙（42×30cm）、ポスター（60×40cm）など
+          </div>
+        )}
       </div>
 
       {/* 提案ボタン */}

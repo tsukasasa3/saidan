@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { goods, shelf } = req.body;
+  const { goods, space, mode = "shelf" } = req.body;
 
   if (!goods?.length) {
     return res.status(400).json({ error: "グッズを追加してください" });
@@ -15,14 +15,36 @@ export default async function handler(req, res) {
     .map(g => `・${g.type}（${g.size}cm）× ${g.count}個`)
     .join("\n");
 
-  const shelfText =
-    shelf?.width && shelf?.depth && shelf?.height
-      ? `棚サイズ: 幅${shelf.width}cm × 奥行き${shelf.depth}cm × 高さ${shelf.height}cm`
-      : "棚サイズ: 未指定（一般的な棚を想定）";
+  let prompt;
 
-  const prompt = `推しグッズの配置のプロとして、以下のグッズを最もかわいく・見映えよく飾るための配置案を提案してください。
+  if (mode === "flat") {
+    const spaceText =
+      space?.width && space?.depth
+        ? `撮影スペース: 幅${space.width}cm × 奥行き${space.depth}cm`
+        : "撮影スペース: 未指定（A3程度を想定）";
 
-${shelfText}
+    prompt = `推しの誕生日祭壇・平置き撮影のプロとして、以下のグッズを真上から撮ったときに最もかわいく映える配置案を提案してください。
+
+${spaceText}
+
+グッズ一覧:
+${goodsList}
+
+以下の形式で提案してください：
+1. 全体のコンセプト（2〜3文）
+2. 具体的な配置案（中央・周囲・余白の使い方など、箇条書きで）
+3. 写真映えのワンポイントアドバイス（小道具・背景シート・照明など）
+
+誕生日祭壇や推し活写真を楽しむ人に向けて、実用的に答えてください。`;
+  } else {
+    const spaceText =
+      space?.width && space?.depth && space?.height
+        ? `棚サイズ: 幅${space.width}cm × 奥行き${space.depth}cm × 高さ${space.height}cm`
+        : "棚サイズ: 未指定（一般的な棚を想定）";
+
+    prompt = `推しグッズの配置のプロとして、以下のグッズを最もかわいく・見映えよく飾るための配置案を提案してください。
+
+${spaceText}
 
 グッズ一覧:
 ${goodsList}
@@ -33,6 +55,7 @@ ${goodsList}
 3. ワンポイントアドバイス
 
 簡潔に、実用的に、推し活を楽しむ人に向けて答えてください。`;
+  }
 
   try {
     const message = await client.messages.create({
