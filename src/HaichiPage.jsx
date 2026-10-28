@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-const TYPES = ["アクスタ", "ぬいぐるみ", "缶バッジ", "フィギュア", "クリアファイル", "タペストリー", "色紙", "その他"];
+const GOODS_TYPES = ["アクスタ", "ぬいぐるみ", "缶バッジ", "フィギュア", "クリアファイル", "タペストリー", "色紙", "その他"];
+const PROP_TYPES  = ["ケーキ", "造花・生花", "バルーン", "キャンドル", "フォトフレーム", "リボン・布", "その他"];
 
 const S = {
   page: {
@@ -53,6 +54,11 @@ const S = {
     fontSize: 13,
     fontWeight: 700,
     color: "#a78bfa",
+    marginBottom: 2,
+  },
+  sectionNote: {
+    fontSize: 11,
+    color: "#6b7280",
     marginBottom: 12,
   },
   label: {
@@ -96,12 +102,34 @@ const S = {
     cursor: "pointer",
     whiteSpace: "nowrap",
   },
-  goodTag: {
+  tag: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     background: "rgba(167,139,250,0.1)",
     border: "1px solid rgba(167,139,250,0.2)",
+    borderRadius: 10,
+    padding: "6px 12px",
+    marginBottom: 6,
+    fontSize: 13,
+  },
+  propTag: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    background: "rgba(244,114,182,0.08)",
+    border: "1px solid rgba(244,114,182,0.2)",
+    borderRadius: 10,
+    padding: "6px 12px",
+    marginBottom: 6,
+    fontSize: 13,
+  },
+  riserTag: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    background: "rgba(99,102,241,0.08)",
+    border: "1px solid rgba(99,102,241,0.2)",
     borderRadius: 10,
     padding: "6px 12px",
     marginBottom: 6,
@@ -168,24 +196,48 @@ const S = {
 };
 
 export default function HaichiPage() {
-  const [mode, setMode]     = useState("shelf"); // "shelf" | "flat"
-  const [type, setType]     = useState("アクスタ");
-  const [size, setSize]     = useState("");
-  const [count, setCount]   = useState("1");
-  const [goods, setGoods]   = useState([]);
-  const [space, setSpace]   = useState({ width: "", depth: "", height: "" });
+  const [mode, setMode] = useState("shelf");
+
+  // グッズ
+  const [type, setType]   = useState("アクスタ");
+  const [size, setSize]   = useState("");
+  const [count, setCount] = useState("1");
+  const [goods, setGoods] = useState([]);
+
+  // 小道具
+  const [propType, setPropType]   = useState("ケーキ");
+  const [propNote, setPropNote]   = useState("");
+  const [props_, setProps_]       = useState([]);
+
+  // 台・スタンド
+  const [riserHeight, setRiserHeight] = useState("");
+  const [riserCount, setRiserCount]   = useState("1");
+  const [risers, setRisers]           = useState([]);
+
+  // スペース
+  const [space, setSpace] = useState({ width: "", depth: "", height: "" });
+
+  // 結果
   const [suggestion, setSuggestion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
 
   const addGood = () => {
     if (!size.trim()) return;
     setGoods(prev => [...prev, { id: Date.now(), type, size: Number(size), count: Number(count) || 1 }]);
-    setSize("");
-    setCount("1");
+    setSize(""); setCount("1");
   };
 
-  const removeGood = (id) => setGoods(prev => prev.filter(g => g.id !== id));
+  const addProp = () => {
+    setProps_(prev => [...prev, { id: Date.now(), type: propType, note: propNote.trim() }]);
+    setPropNote("");
+  };
+
+  const addRiser = () => {
+    if (!riserHeight.trim()) return;
+    setRisers(prev => [...prev, { id: Date.now(), height: Number(riserHeight), count: Number(riserCount) || 1 }]);
+    setRiserHeight(""); setRiserCount("1");
+  };
 
   const handleModeChange = (m) => {
     setMode(m);
@@ -203,18 +255,18 @@ export default function HaichiPage() {
       const res = await fetch("/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goods, space, mode }),
+        body: JSON.stringify({ goods, props: props_, risers, space, mode }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); }
-      else { setSuggestion(data.suggestion); }
+      if (data.error) setError(data.error);
+      else setSuggestion(data.suggestion);
     } catch {
       setError("通信エラーが発生しました。もう一度お試しください。");
     }
     setLoading(false);
   };
 
-  const isShelf = mode === "shelf";
+  const isFlat = mode === "flat";
 
   return (
     <div style={S.page}>
@@ -223,86 +275,114 @@ export default function HaichiPage() {
 
       {/* モード切り替え */}
       <div style={S.modeRow}>
-        <button style={S.modeBtn(isShelf)} onClick={() => handleModeChange("shelf")}>
-          🗄 棚に飾る
-        </button>
-        <button style={S.modeBtn(!isShelf)} onClick={() => handleModeChange("flat")}>
-          📸 平置きで撮る
-        </button>
+        <button style={S.modeBtn(!isFlat)} onClick={() => handleModeChange("shelf")}>🗄 棚に飾る</button>
+        <button style={S.modeBtn(isFlat)}  onClick={() => handleModeChange("flat")}>📸 平置きで撮る</button>
       </div>
 
-      {/* グッズ追加 */}
+      {/* グッズ */}
       <div style={S.section}>
         <div style={S.sectionTitle}>グッズを追加</div>
+        <div style={S.sectionNote}></div>
         <div style={S.label}>種類</div>
         <select style={S.select} value={type} onChange={e => setType(e.target.value)}>
-          {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          {GOODS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <div style={S.row}>
           <div style={{ flex: 1 }}>
             <div style={S.label}>サイズ（cm）</div>
-            <input
-              type="number"
-              placeholder="例: 10"
-              style={S.input}
-              value={size}
-              onChange={e => setSize(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addGood()}
-              min="1"
-            />
+            <input type="number" placeholder="例: 10" style={S.input} value={size}
+              onChange={e => setSize(e.target.value)} onKeyDown={e => e.key === "Enter" && addGood()} min="1" />
           </div>
           <div style={{ flex: 1 }}>
             <div style={S.label}>個数</div>
-            <input
-              type="number"
-              placeholder="例: 3"
-              style={S.input}
-              value={count}
-              onChange={e => setCount(e.target.value)}
-              min="1"
-            />
+            <input type="number" placeholder="例: 3" style={S.input} value={count}
+              onChange={e => setCount(e.target.value)} min="1" />
           </div>
           <div style={{ display: "flex", alignItems: "flex-end" }}>
             <button style={S.addBtn} onClick={addGood}>追加</button>
           </div>
         </div>
-
-        {goods.length > 0 && (
-          <div style={{ marginTop: 4 }}>
-            {goods.map(g => (
-              <div key={g.id} style={S.goodTag}>
-                <span>{g.type}（{g.size}cm）× {g.count}個</span>
-                <button style={S.removeBtn} onClick={() => removeGood(g.id)}>×</button>
-              </div>
-            ))}
+        {goods.map(g => (
+          <div key={g.id} style={S.tag}>
+            <span>{g.type}（{g.size}cm）× {g.count}個</span>
+            <button style={S.removeBtn} onClick={() => setGoods(p => p.filter(x => x.id !== g.id))}>×</button>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* 小道具（任意） */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>小道具を追加（任意）</div>
+        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 12 }}>
+          ケーキ・花・バルーンなど、グッズ以外に置くものがあれば
+        </div>
+        <div style={S.label}>種類</div>
+        <select style={S.select} value={propType} onChange={e => setPropType(e.target.value)}>
+          {PROP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <div style={S.row}>
+          <div style={{ flex: 1 }}>
+            <div style={S.label}>メモ（任意）</div>
+            <input type="text" placeholder="例: 誕生日ケーキ、直径20cm" style={S.input} value={propNote}
+              onChange={e => setPropNote(e.target.value)} onKeyDown={e => e.key === "Enter" && addProp()} />
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <button style={S.addBtn} onClick={addProp}>追加</button>
+          </div>
+        </div>
+        {props_.map(p => (
+          <div key={p.id} style={S.propTag}>
+            <span>{p.type}{p.note ? `（${p.note}）` : ""}</span>
+            <button style={S.removeBtn} onClick={() => setProps_(prev => prev.filter(x => x.id !== p.id))}>×</button>
+          </div>
+        ))}
+      </div>
+
+      {/* 台・スタンド（任意） */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>台・スタンド（任意）</div>
+        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 12 }}>
+          高さ違いの台を使う場合は追加してください
+        </div>
+        <div style={S.row}>
+          <div style={{ flex: 1 }}>
+            <div style={S.label}>高さ（cm）</div>
+            <input type="number" placeholder="例: 10" style={S.input} value={riserHeight}
+              onChange={e => setRiserHeight(e.target.value)} onKeyDown={e => e.key === "Enter" && addRiser()} min="1" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={S.label}>個数</div>
+            <input type="number" placeholder="例: 2" style={S.input} value={riserCount}
+              onChange={e => setRiserCount(e.target.value)} min="1" />
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <button style={S.addBtn} onClick={addRiser}>追加</button>
+          </div>
+        </div>
+        {risers.map(r => (
+          <div key={r.id} style={S.riserTag}>
+            <span>高さ {r.height}cm の台 × {r.count}個</span>
+            <button style={S.removeBtn} onClick={() => setRisers(p => p.filter(x => x.id !== r.id))}>×</button>
+          </div>
+        ))}
       </div>
 
       {/* スペースサイズ（任意） */}
       <div style={S.section}>
-        <div style={S.sectionTitle}>
-          {isShelf ? "棚のサイズ（任意）" : "撮影スペースのサイズ（任意）"}
-        </div>
+        <div style={S.sectionTitle}>{isFlat ? "撮影スペースのサイズ（任意）" : "棚のサイズ（任意）"}</div>
         <div style={S.spaceRow}>
-          {(isShelf
-            ? [["width","幅"],["depth","奥行き"],["height","高さ"]]
-            : [["width","幅"],["depth","奥行き"]]
+          {(isFlat
+            ? [["width","幅"],["depth","奥行き"]]
+            : [["width","幅"],["depth","奥行き"],["height","高さ"]]
           ).map(([key, label]) => (
             <div key={key} style={S.spaceField}>
               <div style={S.label}>{label}（cm）</div>
-              <input
-                type="number"
-                placeholder="—"
-                style={S.input}
-                value={space[key]}
-                onChange={e => setSpace(prev => ({ ...prev, [key]: e.target.value }))}
-                min="1"
-              />
+              <input type="number" placeholder="—" style={S.input} value={space[key]}
+                onChange={e => setSpace(prev => ({ ...prev, [key]: e.target.value }))} min="1" />
             </div>
           ))}
         </div>
-        {!isShelf && (
+        {isFlat && (
           <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
             ※ A3用紙（42×30cm）、ポスター（60×40cm）など
           </div>
@@ -318,7 +398,6 @@ export default function HaichiPage() {
         {loading ? "提案中…" : "✨ 配置を提案してもらう"}
       </button>
 
-      {/* 結果 */}
       {loading && <div style={S.loading}>AIが考え中です…</div>}
       {error && <div style={{ ...S.result, borderColor: "rgba(244,114,182,0.3)", color: "#f472b6" }}>{error}</div>}
       {suggestion && <div style={S.result}>{suggestion}</div>}
