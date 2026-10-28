@@ -442,7 +442,7 @@ export default function App() {
   const [goods, setGoods]         = useState([]);
   const [characters, setCharacters] = useState([]); // [{id,name,color,emoji}]
   const [randomSets, setRandomSets]   = useState([]); // ランダムセット管理
-  const [page, setPage]           = useState("collection");
+  const [page, setPage]           = useState("haichi");
   const [showAdd, setShowAdd]     = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -675,54 +675,32 @@ export default function App() {
           <span style={{ fontSize:22 }}>⛩</span>
           <div style={S.logoText}>SAIDAN</div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          {saveLabel && !viewingShared && <span style={{ fontSize:11, fontWeight:700, color:saveColor }}>{saveLabel}</span>}
-          <button onClick={()=>isPro?downgradeToFree():setShowUpgrade(true)} style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${isPro?"#f59e0b":"rgba(255,255,255,0.15)"}`, background:isPro?"rgba(245,158,11,0.15)":"transparent", color:isPro?"#f59e0b":"#6b7280", fontSize:11, fontWeight:700, cursor:"pointer" }}>
-            {isPro?"👑":"FREE"}
-          </button>
-          {/* Cloud sync button (logged in only) */}
-          {session?.user?.id && <button onClick={async()=>{
-            showToast("☁ 同期中…");
-            try {
-              const cloudData = await loadFromCloud(session.user.id);
-              if (cloudData) { applyData(cloudData); showToast("✓ 同期しました"); }
-              else { showToast("クラウドにデータがありません"); }
-            } catch(e) { showToast("同期エラー: "+(e?.message||String(e))); }
-          }} style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(99,102,241,0.4)",background:"rgba(99,102,241,0.1)",color:"#818cf8",fontSize:11,fontWeight:700,cursor:"pointer" }}>
-            ☁ 同期
-          </button>}
-          {/* Admin button */}
-          {isAdmin && <button onClick={()=>setShowAdminPanel(true)}
-            style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(251,191,36,0.4)",background:"rgba(251,191,36,0.1)",color:"#fbbf24",fontSize:11,fontWeight:700,cursor:"pointer" }}>
-            🛡 管理
-          </button>}
-          {/* Auth button */}
-          <button onClick={()=>session?setShowAuth("account"):setShowAuth("login")}
-            style={{ padding:"4px 10px",borderRadius:20,border:"1px solid rgba(255,255,255,0.12)",background:"transparent",color:session?"#4ade80":"#6b7280",fontSize:11,fontWeight:700,cursor:"pointer" }}>
-            {session?"✓ ログイン中":"ログイン"}
-          </button>
-        </div>
+        <div style={{ fontSize:11, color:"#6b7280" }}>推しグッズ配置シミュレーター</div>
       </header>
 
-      {/* Bottom nav (mobile-first) */}
+      {/* Bottom nav */}
       <nav style={S.bottomNav}>
+        <button style={{ ...S.bottomNavBtn, ...S.bottomNavBtnOn }}>
+          <span style={{ fontSize:20 }}>📐</span>
+          <span style={{ fontSize:10, fontWeight:700 }}>配置相談</span>
+        </button>
         {[
-          ["collection","📦","コレクション"],
-          ["random","🔄","交換"],
-          ["altar","⛩","祭壇"],
-          ["haichi","📐","配置相談"],
-          ["market","🛍","マーケット"],
-        ].map(([p,icon,label])=>(
-          <button key={p} onClick={()=>setPage(p)} style={{ ...S.bottomNavBtn, ...(page===p?S.bottomNavBtnOn:{}) }}>
+          ["📦","コレクション"],
+          ["🔄","交換"],
+          ["⛩","祭壇"],
+          ["🛍","マーケット"],
+        ].map(([icon,label])=>(
+          <button key={label} disabled style={{ ...S.bottomNavBtn, opacity:0.35, cursor:"default", position:"relative" }}>
             <span style={{ fontSize:20 }}>{icon}</span>
-            <span style={{ fontSize:10, fontWeight:page===p?700:400 }}>{label}</span>
+            <span style={{ fontSize:9, color:"#6b7280" }}>{label}</span>
+            <span style={{ position:"absolute", top:4, right:4, fontSize:8, background:"rgba(167,139,250,0.2)", color:"#a78bfa", borderRadius:4, padding:"1px 3px", lineHeight:1 }}>近日</span>
           </button>
         ))}
       </nav>
 
-      {page==="haichi"
-        ? <HaichiPage />
-        : page==="market"
+      {/* 配置シミュレーターのみ公開中 */}
+      <HaichiPage />
+      {false && (page==="market"
         ? <MarketPage
             materials={marketMaterials}
             purchaseIds={myPurchaseIds}
@@ -821,7 +799,7 @@ export default function App() {
               showToast("✨ 自動配置しました！");
             }}
           />
-      }
+      )}
 
       {showAdd && <AddModal onClose={()=>setShowAdd(false)} onAdd={addGood} characters={characters} isPro={isPro} />}
       {showTemplates && <TemplateModal current={currentAltar.templateId} customColors={currentAltar.customColors}
