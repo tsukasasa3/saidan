@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import HaichiPage from "./HaichiPage";
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEY = "saidan-v4";
@@ -709,6 +710,7 @@ export default function App() {
           ["collection","📦","コレクション"],
           ["random","🔄","交換"],
           ["altar","⛩","祭壇"],
+          ["haichi","📐","配置相談"],
           ["market","🛍","マーケット"],
         ].map(([p,icon,label])=>(
           <button key={p} onClick={()=>setPage(p)} style={{ ...S.bottomNavBtn, ...(page===p?S.bottomNavBtnOn:{}) }}>
@@ -718,7 +720,9 @@ export default function App() {
         ))}
       </nav>
 
-      {page==="market"
+      {page==="haichi"
+        ? <HaichiPage />
+        : page==="market"
         ? <MarketPage
             materials={marketMaterials}
             purchaseIds={myPurchaseIds}
